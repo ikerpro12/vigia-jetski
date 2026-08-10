@@ -7,3 +7,7 @@ venv/
 
 # Mapas generados en pruebas
 mapa*.png
+
+# Local: lanzador y registro de la tarea de Windows
+vigia.log
+vigia_tarea.vbs
