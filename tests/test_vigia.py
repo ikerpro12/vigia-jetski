@@ -183,6 +183,48 @@ def _decidir(estado, nivel, momento, minimo=Nivel.NARANJA, cada=5, tope=5):
     return decidir(estado, nivel, momento, minimo, cada, tope, HORAS_PARTE)
 
 
+class PruebaTopeporDefecto(unittest.TestCase):
+    """Lo pidió el dueño de la moto: uno o dos avisos, no una ristra."""
+
+    def test_por_defecto_como_mucho_dos_avisos(self):
+        c = cfg()
+        self.assertEqual(c.escalada_max, 2)
+        self.assertEqual(c.escalada_minutos, 15)
+
+    def test_el_segundo_aviso_cierra_el_episodio(self):
+        estado = Estado()
+        c = cfg()
+        momento = T0
+        enviados = 0
+        # Cuatro horas de temporal, comprobando cada 5 minutos.
+        for _ in range(48):
+            d = decidir(estado, Nivel.NARANJA, momento, Nivel.NARANJA,
+                        c.escalada_minutos, c.escalada_max, c.horas_parte)
+            if d.enviar:
+                enviados += 1
+                estado = actualizar(estado, Nivel.NARANJA, momento, d, True)
+            momento += timedelta(minutes=5)
+        self.assertEqual(enviados, 2)
+
+    def test_empeorar_a_rojo_sigue_pasando_el_tope(self):
+        """Naranja a rojo no es spam: es información nueva."""
+        c = cfg()
+        estado = Estado()
+        momento = T0
+        for _ in range(12):
+            d = decidir(estado, Nivel.NARANJA, momento, Nivel.NARANJA,
+                        c.escalada_minutos, c.escalada_max, c.horas_parte)
+            if d.enviar:
+                estado = actualizar(estado, Nivel.NARANJA, momento, d, True)
+            momento += timedelta(minutes=5)
+        self.assertEqual(estado.episodio_mensajes, 2)  # ya en el tope
+
+        d = decidir(estado, Nivel.ROJO, momento, Nivel.NARANJA,
+                    c.escalada_minutos, c.escalada_max, c.horas_parte)
+        self.assertTrue(d.enviar)
+        self.assertIn("empeora", d.motivo)
+
+
 class PruebaCadencia(unittest.TestCase):
     """El punto delicado: avisar al instante sin acabar inundando el grupo."""
 

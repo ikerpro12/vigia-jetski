@@ -133,10 +133,15 @@ class Config:
 
     # --- Cadencia de avisos -----------------------------------------------
     # Cuando hay peligro: primer aviso instantáneo y luego, como mucho, uno
-    # cada `escalada_minutos`, con un tope de `escalada_max` en todo el
-    # episodio. Así te enteras rápido sin que el móvil eche humo.
-    escalada_minutos: int = 5
-    escalada_max: int = 5
+    # más pasados `escalada_minutos`, con un tope de `escalada_max` en todo el
+    # episodio. Dos mensajes bastan: el primero para enterarte y el segundo
+    # como recordatorio. Un temporal que te suelta quince avisos acaba
+    # silenciado, y entonces no sirve para nada.
+    #
+    # Ojo: empeorar de nivel (naranja -> rojo) SIEMPRE salta el tope. Eso no
+    # es spam, es información nueva.
+    escalada_minutos: int = 15
+    escalada_max: int = 2
 
     # --- Cada cuánto se mira la mar (segundos) ----------------------------
     # Valen tanto para el modo bucle como para el freno del cron.
@@ -183,8 +188,8 @@ class Config:
             callmebot_telefono=os.environ.get("CALLMEBOT_TELEFONO") or None,
             callmebot_key=os.environ.get("CALLMEBOT_KEY") or None,
             horas_parte=_horas("HORAS_PARTE", (8, 14, 23)),
-            escalada_minutos=_entero("ESCALADA_MINUTOS", 5),
-            escalada_max=_entero("ESCALADA_MAX", 5),
+            escalada_minutos=_entero("ESCALADA_MINUTOS", 15),
+            escalada_max=_entero("ESCALADA_MAX", 2),
             intervalo_calma=_entero("INTERVALO_CALMA", 900),
             intervalo_ojo=_entero("INTERVALO_OJO", 600),
             intervalo_alerta=_entero("INTERVALO_ALERTA", 300),

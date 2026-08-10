@@ -242,11 +242,15 @@ parte diario**, y **nunca frena si el último nivel conocido ya era peligroso**.
 **Cuando hay peligro** (nivel NARANJA o ROJO):
 
 - El primer aviso sale **al instante**, sin esperar al siguiente ciclo.
-- A partir de ahí, **como mucho uno cada 5 minutos**, con un **tope de 5
-  mensajes** en todo el episodio. Al llegar al tope se calla.
+- Después, **un único recordatorio** 15 minutos más tarde. Y ya: **tope de 2
+  mensajes** por episodio. Un temporal que te suelta quince avisos acaba
+  silenciado, y entonces no sirve de nada.
 - **Salvo que empeore**: pasar de naranja a rojo rompe el tope y avisa igual,
-  porque eso sí merece interrumpir.
+  porque eso no es spam, es información nueva.
 - Cuando pasa el temporal, un último mensaje de "ya está" y a dormir.
+
+Así, un temporal de cuatro horas son **2 mensajes**, no veinte. Hay una prueba
+que lo simula (`test_el_segundo_aviso_cierra_el_episodio`).
 
 **Con la mar tranquila recibes exactamente 3 mensajes al día**: los partes de
 las **8:00, 14:00 y 23:00** (hora española), y nada más. Ni uno de relleno.
@@ -268,11 +272,20 @@ la propia respuesta de Stormglass, así que no se descuadra.
 
 ## Dónde alojarlo
 
-### Opción recomendada: GitHub Actions en repositorio PÚBLICO (gratis, cada 5 min)
+### Opción recomendada: GitHub Actions en repositorio PÚBLICO (gratis, cada 15 min)
 
 Los repositorios **públicos** tienen **minutos de Actions ilimitados**, así que
-el cron cada 5 minutos sale gratis. Uno privado gastaría unos 8.640 min/mes
-contra los 2.000 gratuitos, y por eso hay que ponerlo público.
+el cron sale gratis. Uno privado se comería los 2.000 min/mes gratuitos, y por
+eso hay que ponerlo público.
+
+> **Por qué 15 minutos y no 5.** Se probó con `*/5` y GitHub sencillamente no
+> lo cumplía: el evento `schedule` es "cuando se pueda", y los cron muy
+> frecuentes son los primeros que se aparcan cuando hay carga. A 15 minutos se
+> respeta bastante mejor. Como además solo se mandan 2 avisos por episodio,
+> mirar más a menudo no aportaba nada.
+>
+> Si quieres reacción de verdad al minuto, eso solo lo da un proceso encendido
+> (`--bucle`), no un cron.
 
 1. Sube el proyecto a un repositorio de GitHub **público**.
 2. En *Settings → Secrets and variables → Actions*, añade los secretos (los
@@ -282,6 +295,15 @@ contra los 2.000 gratuitos, y por eso hay que ponerlo público.
    `CALLMEBOT_TELEFONO` y `CALLMEBOT_KEY`.
 3. Comprueba que `.env` **no** se ha subido (está en `.gitignore`).
 4. Listo. En *Actions* puedes lanzarlo a mano con *Run workflow*.
+
+> ✅ **El workflow comprueba los secretos antes de nada.** Si falta alguno, la
+> ejecución **falla en rojo** y te dice cuál, en vez de terminar "correcta" sin
+> haber mandado nada. Eso último es exactamente lo que despista: con la mar en
+> calma y sin `AEMET_KEY`, callarse es el comportamiento correcto, así que no
+> hay forma de distinguir "todo bien" de "mal configurado".
+>
+> Para probar de verdad, usa *Run workflow* **marcando `forzar`**: eso manda el
+> parte pase lo que pase, así que si no llega el WhatsApp es que algo falla.
 
 > 🔐 **Lo importante de tenerlo público: los registros los lee cualquiera.**
 > Los *secrets* de GitHub siguen siendo secretos y no aparecen en el código,

@@ -1,8 +1,13 @@
 name: Vigía Jetski
 
-# Cada 5 minutos. Esto SOLO sale gratis en un repositorio PÚBLICO: los repos
-# públicos tienen minutos de Actions ilimitados, mientras que uno privado
-# gastaría ~8.640 min/mes contra los 2.000 gratuitos.
+# Cada 15 minutos. Se probó con */5 y GitHub sencillamente no lo respetaba:
+# el `schedule` es "cuando se pueda", y los cron muy frecuentes se aparcan los
+# primeros cuando hay carga. A 15 minutos se cumple mucho mejor, y como el
+# programa solo manda 2 avisos por episodio, tampoco se gana nada mirando más.
+#
+# Esto SOLO sale gratis en un repositorio PÚBLICO: los repos públicos tienen
+# minutos de Actions ilimitados, mientras que uno privado gastaría de sobra
+# los 2.000 min/mes gratuitos.
 #
 # A cambio de ser público, los registros de ejecución los puede leer
 # cualquiera. Por eso todo lo que imprime el programa pasa por un filtro que
@@ -14,7 +19,7 @@ name: Vigía Jetski
 # en una Raspberry Pi o en Fly.io.
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       forzar:
@@ -41,6 +46,43 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Sin esto, un secreto que falte se traduce en una ejecución "correcta"
+      # que no manda nada, y te pasas la tarde mirando por qué no llega el
+      # WhatsApp. Mejor que reviente y lo diga.
+      - name: Comprobar que están los secretos
+        env:
+          URL: ${{ secrets.GREEN_API_URL }}
+          INSTANCIA: ${{ secrets.GREEN_API_INSTANCIA }}
+          TOKEN: ${{ secrets.GREEN_API_TOKEN }}
+          CHAT: ${{ secrets.GREEN_API_CHAT }}
+          AEMET: ${{ secrets.AEMET_KEY }}
+        # Nada de `[ ... ] && ...`: GitHub ejecuta con `bash -e` y una prueba
+        # que da falso al final de un bucle aborta el paso por sorpresa.
+        run: |
+          faltan=""
+          for nombre in URL INSTANCIA TOKEN CHAT; do
+            valor="${!nombre}"
+            if [ -z "$valor" ]; then
+              faltan="$faltan GREEN_API_$nombre"
+            fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan secretos:$faltan - anadelos en Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          case "$URL" in
+            *api.greenapi.com*) ;;
+            *) echo "::warning::GREEN_API_URL no parece la de tu instancia (deberia ser https://NNNN.api.greenapi.com)" ;;
+          esac
+          case "$CHAT" in
+            *@g.us|*@c.us) ;;
+            *) echo "::error::GREEN_API_CHAT debe acabar en @g.us (grupo) o @c.us (personal)"; exit 1 ;;
+          esac
+          if [ -z "$AEMET" ]; then
+            echo "::warning::Sin AEMET_KEY no hay avisos oficiales: perderas las tormentas que los modelos de oleaje no ven"
+          fi
+          echo "Secretos presentes y con buena pinta."
+
       # El estado recuerda qué partes se han enviado, cuántos avisos lleva el
       # episodio y la cuota gastada de Stormglass. Sin él se repetirían cosas.
       - name: Recuperar estado
@@ -64,13 +106,13 @@ jobs:
           AEMET_COSTA: "44"
           ZONA_AEMET: "Ibiza"
           HORAS_PARTE: "8,14,23"
-          ESCALADA_MINUTOS: "5"
-          ESCALADA_MAX: "5"
-          # Ritmo real: 15 min en calma, 10 si se está armando, 5 con peligro.
-          # El cron salta cada 5 min, pero el programa se sale de vacío hasta
-          # que toca. Ver `toca_comprobar` en vigia/estado.py.
-          INTERVALO_CALMA: "900"
-          INTERVALO_OJO: "600"
+          # Como mucho 2 avisos por episodio, separados 15 min.
+          ESCALADA_MINUTOS: "15"
+          ESCALADA_MAX: "2"
+          # Aquí el cron ya viene cada 15 min, así que el freno interno se
+          # deja al mínimo: manda la frecuencia del cron.
+          INTERVALO_CALMA: "840"
+          INTERVALO_OJO: "840"
           INTERVALO_ALERTA: "300"
           TZ: "Europe/Madrid"
         run: |
