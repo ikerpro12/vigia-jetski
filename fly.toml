@@ -1,0 +1,32 @@
+# Despliegue en Fly.io. Con esto el vigía se queda corriendo y ajusta solo
+# cada cuánto mira la mar.
+#
+#   fly launch --no-deploy --copy-config
+#   fly volumes create datos --size 1 --region mad
+#   fly secrets set GREEN_API_URL=... GREEN_API_INSTANCIA=... (etc.)
+#   fly deploy
+#
+# Importante: NO se configura auto_stop. Esto no es una web que pueda dormirse
+# esperando visitas; si la máquina se para, deja de vigilar.
+
+app = "vigia-jetski"
+primary_region = "mad"          # Madrid: lo más cerca de Ibiza
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  TZ = "Europe/Madrid"
+  FICHERO_ESTADO = "/datos/estado.json"
+
+# El estado tiene que persistir entre despliegues y reinicios: si se pierde,
+# se repiten partes y se olvida el tope de mensajes por episodio.
+[mounts]
+  source = "datos"
+  destination = "/datos"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+# Sin servicios HTTP: esto no escucha en ningún puerto, solo trabaja.

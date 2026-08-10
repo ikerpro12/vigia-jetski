@@ -1,0 +1,34 @@
+name: Mantener vivo
+
+# GitHub desactiva los workflows programados de un repositorio PÚBLICO tras
+# 60 días sin actividad en el repo, y las ejecuciones automáticas no cuentan
+# como actividad. Es decir: el vigía se apagaría solo a los dos meses, y sin
+# avisar. Esto hace un commit cada lunes para que eso no pase.
+#
+# Si algún día ves que los avisos han dejado de llegar, mira primero si
+# GitHub ha desactivado el cron en la pestaña Actions.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"     # lunes a las 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  latido:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dejar constancia de vida
+        run: |
+          fecha=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "Última señal de vida del vigía: $fecha" > LATIDO.md
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add LATIDO.md
+          # Si no hay cambios reales, no se fuerza un commit vacío.
+          git diff --staged --quiet || git commit -m "Mantener activo el cron del vigía ($fecha)"
+          git push

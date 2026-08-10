@@ -1,0 +1,91 @@
+name: Vigía Jetski
+
+# Cada 5 minutos. Esto SOLO sale gratis en un repositorio PÚBLICO: los repos
+# públicos tienen minutos de Actions ilimitados, mientras que uno privado
+# gastaría ~8.640 min/mes contra los 2.000 gratuitos.
+#
+# A cambio de ser público, los registros de ejecución los puede leer
+# cualquiera. Por eso todo lo que imprime el programa pasa por un filtro que
+# tapa los tokens (vigia/secretos.py): Green API mete el suyo en la URL y se
+# colaría en los mensajes de error.
+#
+# GitHub retrasa los cron cuando va cargado, así que 5 minutos son
+# "aproximadamente 5-15". Para reacción de verdad al minuto, usa `--bucle`
+# en una Raspberry Pi o en Fly.io.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      forzar:
+        description: "Enviar el parte aunque esté todo en verde"
+        type: boolean
+        default: false
+
+# Que no se solapen dos ejecuciones tocando el mismo estado.
+concurrency:
+  group: vigia
+  cancel-in-progress: false
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sin dependencias que instalar: el programa es solo librería estándar,
+      # así que no hace falta ni cachear pip.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # El estado recuerda qué partes se han enviado, cuántos avisos lleva el
+      # episodio y la cuota gastada de Stormglass. Sin él se repetirían cosas.
+      - name: Recuperar estado
+        uses: actions/cache/restore@v4
+        with:
+          path: estado.json
+          key: vigia-estado-${{ github.run_id }}
+          restore-keys: vigia-estado-
+
+      - name: Comprobar la mar y avisar
+        env:
+          GREEN_API_URL: ${{ secrets.GREEN_API_URL }}
+          GREEN_API_INSTANCIA: ${{ secrets.GREEN_API_INSTANCIA }}
+          GREEN_API_TOKEN: ${{ secrets.GREEN_API_TOKEN }}
+          GREEN_API_CHAT: ${{ secrets.GREEN_API_CHAT }}
+          CALLMEBOT_TELEFONO: ${{ secrets.CALLMEBOT_TELEFONO }}
+          CALLMEBOT_KEY: ${{ secrets.CALLMEBOT_KEY }}
+          STORMGLASS_KEY: ${{ secrets.STORMGLASS_KEY }}
+          AEMET_KEY: ${{ secrets.AEMET_KEY }}
+          CONTACTO: ${{ secrets.CONTACTO }}
+          AEMET_COSTA: "44"
+          ZONA_AEMET: "Ibiza"
+          HORAS_PARTE: "8,14,23"
+          ESCALADA_MINUTOS: "5"
+          ESCALADA_MAX: "5"
+          # Ritmo real: 15 min en calma, 10 si se está armando, 5 con peligro.
+          # El cron salta cada 5 min, pero el programa se sale de vacío hasta
+          # que toca. Ver `toca_comprobar` en vigia/estado.py.
+          INTERVALO_CALMA: "900"
+          INTERVALO_OJO: "600"
+          INTERVALO_ALERTA: "300"
+          TZ: "Europe/Madrid"
+        run: |
+          set +e
+          python -m vigia ${{ inputs.forzar && '--forzar' || '' }}
+          codigo=$?
+          # 0 = calma · 1 = hay aviso (normal) · 2 = ninguna fuente respondió
+          if [ "$codigo" = "2" ]; then
+            echo "::warning::Ninguna fuente respondió: no sabemos cómo está la mar"
+          fi
+          exit 0
+
+      - name: Guardar estado
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: estado.json
+          key: vigia-estado-${{ github.run_id }}

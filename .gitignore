@@ -1,0 +1,9 @@
+.env
+estado.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Mapas generados en pruebas
+mapa*.png
