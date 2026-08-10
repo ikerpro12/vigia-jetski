@@ -316,7 +316,7 @@ Vienen hechos el [`Dockerfile`](Dockerfile) y el [`fly.toml`](fly.toml):
 ```bash
 fly launch --no-deploy --copy-config
 fly volumes create datos --size 1 --region mad
-fly secrets set GREEN_API_URL=https://7107.api.greenapi.com GREEN_API_INSTANCIA=... GREEN_API_TOKEN=... GREEN_API_CHAT=... AEMET_KEY=... STORMGLASS_KEY=...
+fly secrets set GREEN_API_URL=https://TUNUM.api.greenapi.com GREEN_API_INSTANCIA=... GREEN_API_TOKEN=... GREEN_API_CHAT=... AEMET_KEY=... STORMGLASS_KEY=...
 fly deploy
 ```
 
@@ -332,7 +332,8 @@ nohup python3 -m vigia --bucle >> vigia.log 2>&1 &
 
 > ⚠️ **`GREEN_API_URL` es fácil de olvidar y rompe los envíos sin decir nada.**
 > Cada instancia tiene su propia URL (la tuya es
-> `https://7107.api.greenapi.com`), no la genérica `api.green-api.com`.
+> `https://TUNUM.api.greenapi.com`, con el número de tu instancia), no la
+> genérica `api.green-api.com`.
 
 ---
 

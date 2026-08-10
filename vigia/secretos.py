@@ -5,7 +5,7 @@ GitHub: los registros de Actions los puede leer cualquiera. Y hay al menos un
 sitio donde un token se cuela solo: Green API mete el token en la RUTA de la
 URL, así que un error suyo devuelve un cuerpo tal que
 
-    {"statusCode":400, "path":"/waInstance7107.../sendMessage/21d6402f...", ...}
+    {"statusCode":400, "path":"/waInstance<ID>/sendMessage/<TOKEN>", ...}
 
 Si eso se imprime tal cual, el token queda publicado. Aquí se sustituye por
 un marcador antes de que llegue a la salida.
