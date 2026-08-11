@@ -14,9 +14,9 @@ name: Vigía Jetski
 # tapa los tokens (vigia/secretos.py): Green API mete el suyo en la URL y se
 # colaría en los mensajes de error.
 #
-# GitHub retrasa los cron cuando va cargado, así que 5 minutos son
-# "aproximadamente 5-15". Para reacción de verdad al minuto, usa `--bucle`
-# en una Raspberry Pi o en Fly.io.
+# Aun así, GitHub retrasa los cron cuando va cargado: 15 minutos son "unos
+# 15-30" en la práctica. Para reacción de verdad al minuto hace falta un
+# proceso encendido (`--bucle`) en una Raspberry Pi o en Fly.io.
 on:
   schedule:
     - cron: "*/15 * * * *"
@@ -109,6 +109,9 @@ jobs:
           # Como mucho 2 avisos por episodio, separados 15 min.
           ESCALADA_MINUTOS: "15"
           ESCALADA_MAX: "2"
+          # Una hora por debajo del umbral antes de dar el "ya paso":
+          # si no, un nivel que baila genera aviso-calma-aviso-calma.
+          CALMA_MINUTOS: "60"
           # Aquí el cron ya viene cada 15 min, así que el freno interno se
           # deja al mínimo: manda la frecuencia del cron.
           INTERVALO_CALMA: "840"

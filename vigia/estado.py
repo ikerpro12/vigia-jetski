@@ -47,6 +47,11 @@ class Estado:
     # Cuándo se miró la mar por última vez de verdad (para el freno del cron).
     ultima_comprobacion_iso: Optional[str] = None
 
+    # Desde cuándo el nivel está por debajo del umbral, estando en episodio.
+    # Es la memoria de la histéresis: hasta que no pase un rato así, no se
+    # da el "ya pasó".
+    bajo_umbral_desde_iso: Optional[str] = None
+
     def _fecha(self, iso: Optional[str]) -> Optional[datetime]:
         if not iso:
             return None
@@ -66,6 +71,10 @@ class Estado:
     @property
     def ultima_comprobacion(self) -> Optional[datetime]:
         return self._fecha(self.ultima_comprobacion_iso)
+
+    @property
+    def bajo_umbral_desde(self) -> Optional[datetime]:
+        return self._fecha(self.bajo_umbral_desde_iso)
 
     def usos_stormglass_hoy(self, hoy: date) -> int:
         if self.stormglass_fecha != hoy.isoformat():
@@ -136,6 +145,7 @@ def decidir(
     escalada_minutos: int,
     escalada_max: int,
     horas_parte: tuple[int, ...],
+    calma_minutos: int = 60,
 ) -> Decision:
     """Decide si toca mandar mensaje, y de qué tipo."""
     anterior = Nivel(estado.ultimo_nivel)
@@ -173,8 +183,27 @@ def decidir(
             "alerta",
         )
 
-    # ---- Ha vuelto la calma ---------------------------------------------
-    if estado.en_episodio or anterior >= nivel_minimo:
+    # ---- Por debajo del umbral, con un episodio abierto ------------------
+    # Aquí es donde se corta el baile aviso-calma-aviso-calma. Que el nivel
+    # baje un rato NO significa que haya pasado el temporal: puede ser que un
+    # modelo haya cambiado de opinión o que el boletín de AEMET se haya
+    # actualizado. Se espera a que la cosa aguante tranquila un buen rato.
+    if estado.en_episodio:
+        desde = estado.bajo_umbral_desde
+        if desde is None:
+            return Decision(False, "la mar afloja; esperando a ver si se confirma", "nada")
+        tranquilo = (ahora - desde).total_seconds() / 60
+        if tranquilo >= calma_minutos:
+            return Decision(True, f"{tranquilo:.0f} min por debajo del umbral", "calma")
+        return Decision(
+            False,
+            f"solo {tranquilo:.0f} min de calma de los {calma_minutos} "
+            "necesarios para dar el aviso por terminado",
+            "nada",
+        )
+
+    # Episodio que quedó a medias (por ejemplo, tras perder el estado).
+    if anterior >= nivel_minimo:
         return Decision(True, "la situación ha vuelto a la normalidad", "calma")
 
     # ---- Parte diario ----------------------------------------------------
@@ -191,10 +220,18 @@ def actualizar(
     ahora: datetime,
     decision: Decision,
     enviado: bool,
+    nivel_minimo: Nivel = Nivel.NARANJA,
 ) -> Estado:
     """Aplica el resultado de una pasada al estado."""
     tipo = decision.tipo
     estado.ultimo_nivel = int(nivel)
+
+    # Reloj de la histéresis: se pone en marcha al bajar del umbral y se borra
+    # en cuanto la mar vuelve a subir, aunque sea un momento.
+    if nivel >= nivel_minimo:
+        estado.bajo_umbral_desde_iso = None
+    elif estado.en_episodio and estado.bajo_umbral_desde_iso is None:
+        estado.bajo_umbral_desde_iso = ahora.isoformat()
 
     if enviado:
         estado.ultimo_aviso_iso = ahora.isoformat()
@@ -212,6 +249,7 @@ def actualizar(
         estado.episodio_inicio_iso = None
         estado.episodio_mensajes = 0
         estado.episodio_nivel_max = 0
+        estado.bajo_umbral_desde_iso = None
 
     elif tipo == "parte" and enviado:
         hoy = ahora.date().isoformat()

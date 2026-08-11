@@ -196,6 +196,7 @@ def una_pasada(cfg: Config, args, respetar_freno: bool = False) -> tuple[Nivel, 
         cfg.escalada_minutos,
         cfg.escalada_max,
         cfg.horas_parte,
+        cfg.calma_minutos,
     )
     if args.forzar or cfg.parte_diario:
         decision.enviar, decision.motivo = True, "envío forzado"
@@ -229,7 +230,9 @@ def una_pasada(cfg: Config, args, respetar_freno: bool = False) -> tuple[Nivel, 
             aviso(f"  [{resultado.canal}] {estado_txt}: {resultado.detalle}", error=True)
             enviado = enviado or resultado.ok
 
-    estado = actualizar(estado, nivel, momento, decision, enviado)
+    estado = actualizar(
+        estado, nivel, momento, decision, enviado, Nivel(cfg.nivel_minimo_aviso)
+    )
     estado = anotar_comprobacion(estado, momento)
     guardar(cfg.fichero_estado, estado)
 

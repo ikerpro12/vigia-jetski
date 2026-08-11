@@ -267,24 +267,100 @@ class PruebaCadencia(unittest.TestCase):
         self.assertIn("empeora", d.motivo)
 
     def test_avisa_de_la_vuelta_a_la_calma_una_sola_vez(self):
+        """El 'ya pasó' llega, pero solo tras una hora de calma sostenida."""
         estado = self._episodio_abierto(T0, mensajes=2, nivel=Nivel.ROJO)
-        d = _decidir(estado, Nivel.VERDE, T0 + timedelta(hours=8))
+
+        # Primera lectura tranquila: arranca el reloj, todavía no se dice nada.
+        primera = T0 + timedelta(hours=8)
+        d = _decidir(estado, Nivel.VERDE, primera)
+        self.assertFalse(d.enviar)
+        estado = actualizar(estado, Nivel.VERDE, primera, d, False, Nivel.NARANJA)
+
+        # Pasada la hora de margen, ahora sí.
+        despues = primera + timedelta(minutes=70)
+        d = _decidir(estado, Nivel.VERDE, despues)
         self.assertTrue(d.enviar)
         self.assertEqual(d.tipo, "calma")
 
-        # Tras enviar la calma, el episodio se cierra y ya no insiste.
-        estado = actualizar(estado, Nivel.VERDE, T0 + timedelta(hours=8), d, True)
-        siguiente = _decidir(estado, Nivel.VERDE, T0 + timedelta(hours=9))
+        # Y no insiste.
+        estado = actualizar(estado, Nivel.VERDE, despues, d, True, Nivel.NARANJA)
+        siguiente = _decidir(estado, Nivel.VERDE, despues + timedelta(hours=1))
         self.assertFalse(siguiente.enviar)
 
     def test_episodio_nuevo_vuelve_a_avisar_al_instante(self):
-        estado = self._episodio_abierto(T0, mensajes=5)
-        cierre = _decidir(estado, Nivel.VERDE, T0 + timedelta(hours=2))
-        estado = actualizar(estado, Nivel.VERDE, T0 + timedelta(hours=2), cierre, True)
+        """Cerrado un temporal, el siguiente vuelve a avisar sin esperas."""
+        estado = self._episodio_abierto(T0, mensajes=2)
 
-        d = _decidir(estado, Nivel.ROJO, T0 + timedelta(hours=3))
+        momento = T0 + timedelta(hours=2)
+        for _ in range(16):  # 80 min de calma: cierra el episodio
+            d = _decidir(estado, Nivel.VERDE, momento)
+            estado = actualizar(estado, Nivel.VERDE, momento, d, d.enviar, Nivel.NARANJA)
+            momento += timedelta(minutes=5)
+        self.assertFalse(estado.en_episodio)
+
+        d = _decidir(estado, Nivel.ROJO, momento)
         self.assertTrue(d.enviar)
         self.assertIn("inmediato", d.motivo)
+
+
+class PruebaHisteresis(unittest.TestCase):
+    """El 11/08/2026 el nivel bailó alrededor del umbral y salieron seis
+    mensajes en una hora: naranja, verde, naranja, naranja, verde, naranja.
+
+    El tope de 2 por episodio no servía de nada, porque cada bajada cerraba el
+    episodio y cada subida abría uno nuevo. Estas pruebas fijan el arreglo.
+    """
+
+    def _simular(self, niveles, cada_min=5, calma=60):
+        """Reproduce una secuencia de niveles y cuenta los mensajes."""
+        c = cfg()
+        estado, momento, enviados = Estado(), T0, []
+        for nivel in niveles:
+            d = decidir(estado, nivel, momento, Nivel.NARANJA,
+                        c.escalada_minutos, c.escalada_max, c.horas_parte, calma)
+            if d.enviar:
+                enviados.append((momento.strftime("%H:%M"), nivel.etiqueta, d.tipo))
+                estado = actualizar(estado, nivel, momento, d, True, Nivel.NARANJA)
+            else:
+                estado = actualizar(estado, nivel, momento, d, False, Nivel.NARANJA)
+            momento += timedelta(minutes=cada_min)
+        return enviados
+
+    def test_el_caso_real_del_11_de_agosto(self):
+        N, V = Nivel.NARANJA, Nivel.VERDE
+        secuencia = [N, N, V, N, N, V, N, N, N, N, N, N]
+        enviados = self._simular(secuencia)
+        # Antes: 6 mensajes. Ahora: el aviso inicial y su recordatorio.
+        self.assertEqual(len(enviados), 2, f"demasiados mensajes: {enviados}")
+        self.assertTrue(all(t == "alerta" for _, _, t in enviados))
+
+    def test_un_bajon_corto_no_da_el_todo_despejado(self):
+        N, V = Nivel.NARANJA, Nivel.VERDE
+        enviados = self._simular([N] + [V] * 6)  # 30 min de calma, no basta
+        self.assertEqual([t for _, _, t in enviados], ["alerta"])
+
+    def test_la_calma_sostenida_si_cierra_el_aviso(self):
+        N, V = Nivel.NARANJA, Nivel.VERDE
+        enviados = self._simular([N] + [V] * 15)  # 75 min de calma
+        tipos = [t for _, _, t in enviados]
+        self.assertIn("calma", tipos)
+        self.assertEqual(tipos.count("calma"), 1, "el 'ya pasó' se manda una vez")
+
+    def test_volver_a_subir_reinicia_el_reloj_de_la_calma(self):
+        """Si en mitad de la espera vuelve el peligro, no hay 'ya pasó'."""
+        N, V = Nivel.NARANJA, Nivel.VERDE
+        enviados = self._simular([N] + [V] * 8 + [N] + [V] * 8)
+        self.assertNotIn("calma", [t for _, _, t in enviados])
+
+    def test_amarillo_no_cierra_el_episodio_de_golpe(self):
+        N, A = Nivel.NARANJA, Nivel.AMARILLO
+        enviados = self._simular([N] + [A] * 6)
+        self.assertNotIn("calma", [t for _, _, t in enviados])
+
+    def test_empeorar_sigue_avisando_pese_a_la_histeresis(self):
+        N, V, R = Nivel.NARANJA, Nivel.VERDE, Nivel.ROJO
+        enviados = self._simular([N, N, V, V, R])
+        self.assertEqual(enviados[-1][1], "ROJO")
 
 
 class PruebaPartesDiarios(unittest.TestCase):

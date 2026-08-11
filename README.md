@@ -252,6 +252,26 @@ parte diario**, y **nunca frena si el último nivel conocido ya era peligroso**.
 Así, un temporal de cuatro horas son **2 mensajes**, no veinte. Hay una prueba
 que lo simula (`test_el_segundo_aviso_cierra_el_episodio`).
 
+### Histéresis: por qué no se dice "ya pasó" a la primera
+
+El nivel no baja de golpe: se queda bailando alrededor del umbral, sobre todo
+cuando lo que manda es un aviso de AEMET que aparece y desaparece entre
+boletines. La primera versión trataba **cada bajada como fin del temporal** y
+**cada subida como uno nuevo**, así que el tope de 2 mensajes no servía de
+nada. El 11/08/2026 eso produjo seis mensajes en una hora:
+
+```
+09:20 NARANJA · 09:31 VERDE · 09:36 NARANJA · 09:51 NARANJA · 09:56 VERDE · 10:11 NARANJA
+```
+
+Ahora, una vez abierto un episodio, hace falta **una hora entera por debajo
+del umbral** (`CALMA_MINUTOS`) para darlo por cerrado. Si en mitad de esa
+espera vuelve a subir, el reloj se reinicia y **no se manda nada**: se sigue
+en el mismo episodio. Con esa misma secuencia real ahora salen **2 mensajes**,
+y está fijado en `PruebaHisteresis.test_el_caso_real_del_11_de_agosto`.
+
+Bajar a 🟡 amarillo tampoco cierra el episodio de golpe, por lo mismo.
+
 **Con la mar tranquila recibes exactamente 3 mensajes al día**: los partes de
 las **8:00, 14:00 y 23:00** (hora española), y nada más. Ni uno de relleno.
 Se configuran en `HORAS_PARTE`. Si el cron se despista y el parte de las 8:00

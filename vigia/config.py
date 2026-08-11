@@ -143,6 +143,14 @@ class Config:
     escalada_minutos: int = 15
     escalada_max: int = 2
 
+    # Histéresis: minutos que la mar tiene que estar POR DEBAJO del umbral
+    # antes de dar el "ya pasó". Sin esto, un nivel que baila alrededor del
+    # umbral genera aviso-calma-aviso-calma sin parar: cada bajada cerraba el
+    # episodio y cada subida abría otro, saltándose el tope de mensajes.
+    # Una hora es tiempo de sobra para saber si el temporal se ha ido de
+    # verdad o solo ha respirado.
+    calma_minutos: int = 60
+
     # --- Cada cuánto se mira la mar (segundos) ----------------------------
     # Valen tanto para el modo bucle como para el freno del cron.
     intervalo_calma: int = 900     # 15 min con la mar tranquila
@@ -190,6 +198,7 @@ class Config:
             horas_parte=_horas("HORAS_PARTE", (8, 14, 23)),
             escalada_minutos=_entero("ESCALADA_MINUTOS", 15),
             escalada_max=_entero("ESCALADA_MAX", 2),
+            calma_minutos=_entero("CALMA_MINUTOS", 60),
             intervalo_calma=_entero("INTERVALO_CALMA", 900),
             intervalo_ojo=_entero("INTERVALO_OJO", 600),
             intervalo_alerta=_entero("INTERVALO_ALERTA", 300),
