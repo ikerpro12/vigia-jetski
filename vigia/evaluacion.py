@@ -98,11 +98,24 @@ def evaluar_hora(punto: Consenso, cfg: Config) -> Evaluacion:
             "(entra directo en la cala)"
         )
     elif not de_mar and nivel > Nivel.VERDE and punto.direccion_viento_grados is not None:
-        nivel = _acotar(nivel - 1)
-        motivos.append(
-            f"viento de tierra del {rumbo(punto.direccion_viento_grados)} "
-            "(la cala queda a resguardo)"
+        # El resguardo tiene un límite. Con rachas fuertes, un viento de
+        # tierra tampoco es inofensivo: puede arrancar el amarre y llevarse la
+        # moto mar adentro, que es peor que dejarla contra la arena. A partir
+        # del umbral naranja de racha ya no se rebaja nada.
+        racha_fuerte = (
+            punto.racha_nudos is not None and punto.racha_nudos >= u.racha_naranja
         )
+        if racha_fuerte:
+            motivos.append(
+                f"viento de tierra del {rumbo(punto.direccion_viento_grados)}, "
+                "pero con rachas fuertes: puede llevarse la moto mar adentro"
+            )
+        else:
+            nivel = _acotar(nivel - 1)
+            motivos.append(
+                f"viento de tierra del {rumbo(punto.direccion_viento_grados)} "
+                "(la cala queda a resguardo)"
+            )
 
     # Mar de viento corto y picado: castiga más el amarre.
     if (
@@ -137,6 +150,51 @@ def evaluar_hora(punto: Consenso, cfg: Config) -> Evaluacion:
 
 def evaluar_serie(serie: list[Consenso], cfg: Config) -> list[Evaluacion]:
     return [evaluar_hora(punto, cfg) for punto in serie]
+
+
+def corrobora_aviso(serie: list[Consenso], cfg: Config) -> tuple[bool, str]:
+    """¿Respalda algo el aviso oficial de AEMET, o va solo?
+
+    AEMET avisa por zonas grandes y por fenómenos que un modelo de oleaje no
+    ve (tormentas, turbonadas). Pero un aviso para "aguas de Ibiza y
+    Formentera" puede referirse a un chubasco al otro lado de la isla mientras
+    en Cala Tarida no pasa nada.
+
+    Se busca cualquier indicio en las próximas horas: mar que se levanta,
+    rachas que suben o lluvia prevista. Si no hay ninguno, el aviso se enseña
+    igual pero no dispara un mensaje.
+    """
+    u = cfg.umbrales
+    for punto in serie:
+        if punto.altura_ola_m is not None and punto.altura_ola_m >= u.ola_amarillo:
+            return True, f"la mar sube a {punto.altura_ola_m:.1f} m"
+        if punto.racha_nudos is not None and punto.racha_nudos >= u.racha_amarillo:
+            return True, f"rachas de {punto.racha_nudos:.0f} nudos"
+        if punto.lluvia_mm is not None and punto.lluvia_mm >= 1.0:
+            return True, f"lluvia de {punto.lluvia_mm:.1f} mm"
+        if punto.prob_lluvia_pct is not None and punto.prob_lluvia_pct >= 50:
+            return True, f"{punto.prob_lluvia_pct:.0f}% de probabilidad de lluvia"
+    return False, "ningún modelo ve nada: mar plana, sin viento y sin lluvia"
+
+
+def primer_cambio(
+    evaluaciones: list[Evaluacion], desde_nivel: Nivel
+) -> Optional[Evaluacion]:
+    """Primera hora en la que el nivel supera al actual. El "ojo, que viene"."""
+    for evaluacion in evaluaciones[1:]:
+        if evaluacion.nivel > desde_nivel:
+            return evaluacion
+    return None
+
+
+def primera_lluvia(serie: list[Consenso]) -> Optional[Consenso]:
+    """Primera hora con lluvia apreciable."""
+    for punto in serie:
+        if punto.lluvia_mm is not None and punto.lluvia_mm >= 0.5:
+            return punto
+        if punto.prob_lluvia_pct is not None and punto.prob_lluvia_pct >= 60:
+            return punto
+    return None
 
 
 def primer_aviso(

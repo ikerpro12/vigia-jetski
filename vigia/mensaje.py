@@ -6,7 +6,14 @@ from datetime import datetime
 from typing import Optional
 
 from .config import Config
-from .evaluacion import pico, primer_aviso, rumbo
+from .evaluacion import (
+    corrobora_aviso,
+    pico,
+    primer_aviso,
+    primer_cambio,
+    primera_lluvia,
+    rumbo,
+)
 from .modelo import Consenso, Evaluacion, Nivel, RespuestaFuente
 
 CONSEJO = {
@@ -85,14 +92,23 @@ def componer(
     peor = pico(evaluaciones)
     nivel = peor.nivel if peor else Nivel.VERDE
 
-    # Un aviso oficial de AEMET para nuestra zona manda sobre los modelos: son
-    # cosas (tormentas, turbonadas) que un modelo de oleaje no ve venir. Nunca
-    # baja el nivel, solo lo sube a NARANJA como mínimo.
+    # Un aviso oficial de AEMET pesa, pero no a ciegas. Avisa por zonas
+    # grandes, y su aviso para "aguas de Ibiza y Formentera" puede ser por un
+    # chubasco al otro lado de la isla. Así que:
+    #
+    #   * Si algún modelo lo respalda (mar, viento o lluvia) -> NARANJA: se
+    #     manda el aviso.
+    #   * Si no lo respalda nadie -> AMARILLO: no se manda nada, pero se
+    #     vigila más a menudo y el aviso aparece en el parte diario.
+    #
+    # Nunca se ignora del todo: una turbonada no la ve ningún modelo de olas.
     aviso_oficial = next(
         (r.aviso_oficial for r in respuestas if r.aviso_oficial), None
     )
+    respaldado, razon_respaldo = (False, "")
     if aviso_oficial:
-        nivel = max(nivel, Nivel.NARANJA)
+        respaldado, razon_respaldo = corrobora_aviso(list(serie), cfg)
+        nivel = max(nivel, Nivel.NARANJA if respaldado else Nivel.AMARILLO)
 
     lineas: list[str] = []
     lineas.append(f"{nivel.emoji} *VIGÍA JETSKI · {cfg.lugar}*")
@@ -130,6 +146,40 @@ def componer(
     if aviso_oficial:
         lineas.append("*🛑 AVISO OFICIAL DE AEMET*")
         lineas.append(aviso_oficial)
+        if respaldado:
+            lineas.append(f"_Los modelos lo respaldan: {razon_respaldo}._")
+        else:
+            lineas.append(
+                f"_Pero {razon_respaldo}. Puede ser por otra zona de la isla, "
+                "así que se vigila sin dar la alarma._"
+            )
+        lineas.append("")
+
+    # Qué viene. El objetivo de todo esto es enterarse ANTES, así que si algo
+    # empeora más adelante conviene decirlo aunque ahora esté todo tranquilo.
+    proximas: list[str] = []
+    cambio = primer_cambio(list(evaluaciones), evaluaciones[0].nivel if evaluaciones else Nivel.VERDE)
+    if cambio is not None:
+        detalle = ", ".join(cambio.motivos[:2]) if cambio.motivos else ""
+        proximas.append(
+            f"  {cambio.nivel.emoji} {cambio.instante:%H:%M} "
+            f"({_margen(ahora, cambio.instante)}): sube a {cambio.nivel.etiqueta}"
+            + (f" — {detalle}" if detalle else "")
+        )
+    lluvia = primera_lluvia(list(serie))
+    if lluvia is not None:
+        que = []
+        if lluvia.lluvia_mm:
+            que.append(f"{lluvia.lluvia_mm:.1f} mm")
+        if lluvia.prob_lluvia_pct:
+            que.append(f"{lluvia.prob_lluvia_pct:.0f}%")
+        proximas.append(
+            f"  🌧️ {lluvia.instante:%H:%M} ({_margen(ahora, lluvia.instante)}): "
+            f"lluvia{' ' + ' · '.join(que) if que else ''}"
+        )
+    if proximas:
+        lineas.append("*Lo que viene*")
+        lineas.extend(proximas)
         lineas.append("")
 
     # El aviso propiamente dicho: cuánto margen hay.

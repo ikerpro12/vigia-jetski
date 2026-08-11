@@ -33,6 +33,7 @@ consultan **cinco fuentes en paralelo** y se combinan:
 |---|---|---|---|
 | **Open-Meteo Marine** | Oleaje: ECMWF WAM, Météo-France, GFS-Wave, GWAM, EWAM | hasta 5 | No |
 | **Open-Meteo Forecast** | Viento y rachas: ECMWF, GFS, ICON, Météo-France, UKMO | 5 | No |
+| **Open-Meteo lluvia** | Lluvia y probabilidad, para contrastar avisos de AEMET | 1 | No |
 | **MET Norway (yr.no)** | Viento y rachas, otra organización y otro servidor | 1 | No |
 | **7Timer!** | Viento medio, tercera infraestructura independiente | 1 | No |
 | **AEMET** | Boletín y **avisos oficiales** de aguas de Ibiza | — | Sí, gratis |
@@ -82,15 +83,46 @@ el amarre mucho más que un mar de fondo largo de la misma altura. También suma
 
 **Margen de tiempo.** No mira solo cómo está la mar ahora, sino las próximas
 12 horas, y te dice **a qué hora** se cruza el umbral y **cuánto te queda**.
-Eso es justamente el tiempo que tienes para bajar.
+Eso es justamente el tiempo que tienes para bajar. El nivel del mensaje es
+**el peor de toda la ventana**, no el de este momento: puede estar todo en
+calma y avisarte igual porque dentro de tres horas no lo estará.
 
-**Los avisos oficiales mandan sobre los modelos.** Si AEMET tiene un aviso
-vigente que menciona Ibiza, el nivel sube a NARANJA como mínimo aunque los
-modelos digan que la mar está plana. Esto no es teórico: el 10/08/2026, con
-todos los modelos dando 0,3 m de ola y viento flojo, AEMET tenía declarado
-*"alguna tormenta que puede ser fuerte hasta media noche"* en aguas de Ibiza.
-Una turbonada así no la ve un modelo de oleaje, y es exactamente lo que puede
-hundirte la moto. Un aviso que solo mencione Menorca no escala nada.
+Además, todo mensaje lleva un apartado **«Lo que viene»** con la primera hora
+en la que el nivel sube y con la hora a la que empieza a llover:
+
+```
+*Lo que viene*
+  🟠 14:00 (en 3 h 24 min): sube a NARANJA — olas de 0.9 m, rachas de 22 nudos
+  🌧️ 12:00 (en 1 h 24 min): lluvia 3.0 mm · 85%
+```
+
+**Lluvia.** Se consulta aparte (Open-Meteo, sin clave). No sube el nivel por sí
+sola — el agua no hunde una moto fondeada — pero avisa de cuándo se estropea
+la cosa y, sobre todo, sirve para **dar o quitar la razón a un aviso de AEMET**
+cuando los modelos de mar están planos.
+
+**Los avisos oficiales pesan, pero se contrastan.** Una turbonada no la ve
+ningún modelo de oleaje, así que un aviso de AEMET no se puede ignorar. Pero
+AEMET avisa **por zonas grandes**: su aviso para "aguas de Ibiza y Formentera"
+puede ser por un chubasco al otro lado de la isla mientras en Cala Tarida no
+se mueve una hoja. La primera versión daba la alarma igualmente, y el
+11/08/2026 eso llenó el grupo de avisos con la mar completamente plana.
+
+Ahora se busca **algún indicio que lo respalde** en las próximas horas: mar
+que se levanta, rachas que suben o lluvia prevista.
+
+| Aviso de AEMET | Respaldado por los modelos | Resultado |
+|---|---|---|
+| Sí | Sí (mar, viento o lluvia) | 🟠 NARANJA · te llega el mensaje |
+| Sí | No: todo plano y seco | 🟡 AMARILLO · **no se manda nada**, pero se vigila más a menudo y el aviso sale en el parte |
+| No | — | manda lo que digan los modelos |
+
+Un aviso que solo mencione Menorca no escala nada, como antes.
+
+**El viento de tierra deja de ser un salvoconducto si sopla fuerte.** Con
+rachas por encima del umbral naranja ya no se rebaja el nivel: un viento de
+tierra fuerte puede arrancar el amarre y llevarse la moto **mar adentro**, que
+es bastante peor que dejarla contra la arena.
 
 Niveles: 🟢 VERDE · 🟡 AMARILLO · 🟠 NARANJA · 🔴 ROJO (los mismos colores de AEMET).
 

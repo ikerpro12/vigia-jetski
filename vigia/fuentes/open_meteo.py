@@ -103,6 +103,53 @@ def olas_open_meteo(cfg: Config) -> RespuestaFuente:
     )
 
 
+def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
+    """Lluvia y probabilidad de lluvia.
+
+    Va en su propia llamada, sin `models`, a propósito. Con varios modelos el
+    filtro de series "todo a cero" se cargaría los datos buenos: en oleaje un
+    cero constante significa que la malla te pone en tierra, pero en lluvia
+    significa, simplemente, que no llueve.
+
+    La lluvia por sí sola no hunde una moto fondeada, así que no sube el nivel.
+    Sirve para dos cosas: avisar de a qué hora se estropea la cosa, y **dar o
+    quitar la razón a un aviso de AEMET** cuando los modelos de mar están
+    planos.
+    """
+    nombre = "Open-Meteo lluvia"
+    parametros = {
+        "latitude": cfg.latitud,
+        "longitude": cfg.longitud,
+        "hourly": "precipitation,precipitation_probability",
+        "timezone": cfg.zona_horaria,
+        "forecast_days": 2,
+    }
+    try:
+        datos = pedir_json(
+            f"{FORECAST}?{urlencode(parametros)}", tiempo_espera=cfg.tiempo_espera
+        )
+    except ErrorFuente as exc:
+        return RespuestaFuente(nombre=nombre, error=str(exc))
+
+    bloque = datos.get("hourly") or {}
+    tiempos = bloque.get("time") or []
+    if not tiempos:
+        return RespuestaFuente(nombre=nombre, error="sin datos horarios")
+
+    lluvias = bloque.get("precipitation") or [None] * len(tiempos)
+    probabilidades = bloque.get("precipitation_probability") or [None] * len(tiempos)
+
+    lecturas = [
+        Lectura(
+            instante=hora_local(marca, cfg.zona_horaria),
+            lluvia_mm=lluvias[i] if i < len(lluvias) else None,
+            prob_lluvia_pct=probabilidades[i] if i < len(probabilidades) else None,
+        )
+        for i, marca in enumerate(tiempos)
+    ]
+    return RespuestaFuente(nombre=nombre, lecturas=lecturas)
+
+
 def viento_open_meteo(cfg: Config) -> RespuestaFuente:
     nombre = "Open-Meteo viento"
     parametros = {

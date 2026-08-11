@@ -25,6 +25,7 @@ from vigia.estado import (  # noqa: E402
     toca_comprobar,
 )
 from vigia.evaluacion import (  # noqa: E402
+    corrobora_aviso,
     es_viento_de_mar,
     evaluar_hora,
     evaluar_serie,
@@ -301,6 +302,117 @@ class PruebaCadencia(unittest.TestCase):
         d = _decidir(estado, Nivel.ROJO, momento)
         self.assertTrue(d.enviar)
         self.assertIn("inmediato", d.motivo)
+
+
+class PruebaAvisoAemetContrastado(unittest.TestCase):
+    """Un aviso de AEMET ya no dispara la alarma él solo.
+
+    AEMET avisa por zonas grandes: su aviso para "aguas de Ibiza y Formentera"
+    puede ser por un chubasco al otro lado de la isla. Si ningún modelo lo
+    respalda, se enseña pero no se molesta a nadie.
+    """
+
+    def _serie(self, ola=0.15, racha=5.0, lluvia=0.0, prob=0.0, rumbo_=90.0):
+        return [
+            Consenso(
+                instante=T0 + timedelta(hours=i),
+                altura_ola_m=ola,
+                periodo_ola_s=6.0,
+                racha_nudos=racha,
+                direccion_viento_grados=rumbo_,
+                lluvia_mm=lluvia,
+                prob_lluvia_pct=prob,
+                fuentes_ola=4,
+            )
+            for i in range(6)
+        ]
+
+    def _componer(self, serie, con_aviso=True):
+        respuestas = [
+            RespuestaFuente(
+                nombre="AEMET",
+                boletin="boletin",
+                aviso_oficial="Tormenta en aguas de Ibiza." if con_aviso else None,
+            )
+        ]
+        return componer(cfg(), T0, serie, evaluar_serie(serie, cfg()), respuestas)
+
+    def test_mar_plana_y_sin_lluvia_no_dispara_la_alarma(self):
+        nivel, texto = self._componer(self._serie())
+        self.assertEqual(nivel, Nivel.AMARILLO)   # vigilar, pero sin mensaje
+        self.assertLess(nivel, Nivel.NARANJA)
+        self.assertIn("ningún modelo ve nada", texto)
+
+    def test_si_hay_lluvia_prevista_si_dispara(self):
+        nivel, texto = self._componer(self._serie(lluvia=2.0))
+        self.assertGreaterEqual(nivel, Nivel.NARANJA)
+        self.assertIn("respaldan", texto)
+
+    def test_si_sube_la_mar_si_dispara(self):
+        nivel, _ = self._componer(self._serie(ola=0.7))
+        self.assertGreaterEqual(nivel, Nivel.NARANJA)
+
+    def test_si_hay_rachas_si_dispara(self):
+        nivel, _ = self._componer(self._serie(racha=20.0))
+        self.assertGreaterEqual(nivel, Nivel.NARANJA)
+
+    def test_alta_probabilidad_de_lluvia_tambien_cuenta(self):
+        respalda, _ = corrobora_aviso(self._serie(prob=80.0), cfg())
+        self.assertTrue(respalda)
+
+    def test_sin_aviso_de_aemet_la_mar_plana_es_verde(self):
+        nivel, _ = self._componer(self._serie(), con_aviso=False)
+        self.assertEqual(nivel, Nivel.VERDE)
+
+
+class PruebaVientoDeTierraFuerte(unittest.TestCase):
+    def test_las_rachas_fuertes_no_se_rebajan_por_ser_de_tierra(self):
+        """Un viento de tierra fuerte puede llevarse la moto mar adentro."""
+        flojo = evaluar_hora(
+            Consenso(instante=T0, altura_ola_m=0.6, racha_nudos=20,
+                     direccion_viento_grados=90, periodo_ola_s=6), cfg()
+        )
+        fuerte = evaluar_hora(
+            Consenso(instante=T0, altura_ola_m=0.6, racha_nudos=30,
+                     direccion_viento_grados=90, periodo_ola_s=6), cfg()
+        )
+        self.assertGreater(fuerte.nivel, flojo.nivel)
+        self.assertTrue(any("mar adentro" in m for m in fuerte.motivos))
+
+
+class PruebaLoQueViene(unittest.TestCase):
+    """El sentido de todo esto es enterarse ANTES, no cuando ya pasa."""
+
+    def test_anuncia_cuando_va_a_empeorar(self):
+        serie = [
+            Consenso(
+                instante=T0 + timedelta(hours=i),
+                altura_ola_m=0.2 if i < 3 else 1.2,
+                periodo_ola_s=6.0,
+                racha_nudos=8 if i < 3 else 28,
+                direccion_viento_grados=265.0,
+                fuentes_ola=4,
+            )
+            for i in range(8)
+        ]
+        _, texto = componer(cfg(), T0, serie, evaluar_serie(serie, cfg()), [])
+        self.assertIn("Lo que viene", texto)
+        self.assertIn("sube a", texto)
+
+    def test_anuncia_la_lluvia(self):
+        serie = [
+            Consenso(
+                instante=T0 + timedelta(hours=i),
+                altura_ola_m=0.2, periodo_ola_s=6.0, racha_nudos=6,
+                direccion_viento_grados=90.0,
+                lluvia_mm=0.0 if i < 2 else 3.0,
+                prob_lluvia_pct=10.0 if i < 2 else 85.0,
+                fuentes_ola=4,
+            )
+            for i in range(6)
+        ]
+        _, texto = componer(cfg(), T0, serie, evaluar_serie(serie, cfg()), [])
+        self.assertIn("lluvia", texto.lower())
 
 
 class PruebaHisteresis(unittest.TestCase):

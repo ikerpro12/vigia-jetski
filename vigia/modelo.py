@@ -50,6 +50,8 @@ class Lectura:
     viento_nudos: Optional[float] = None
     racha_nudos: Optional[float] = None
     direccion_viento_grados: Optional[float] = None
+    lluvia_mm: Optional[float] = None
+    prob_lluvia_pct: Optional[float] = None
 
     def tiene_datos(self) -> bool:
         return any(
@@ -97,6 +99,8 @@ class Consenso:
     racha_nudos: Optional[float] = None
     racha_max_nudos: Optional[float] = None
     direccion_viento_grados: Optional[float] = None
+    lluvia_mm: Optional[float] = None
+    prob_lluvia_pct: Optional[float] = None
     fuentes_ola: int = 0
     fuentes_viento: int = 0
 
