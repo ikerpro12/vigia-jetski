@@ -7,19 +7,26 @@ cuando la mar va a ponerse fea, para que te dé tiempo a bajar a por ella.
 
 ```
 🟠 *VIGÍA JETSKI · Cala Tarida (Ibiza)*
-_10/08/2026 20:44 · nivel NARANJA_
+_11/08/2026 12:30 · nivel NARANJA_
 
 *Ahora mismo*
-• Olas: 0.4 m, periodo 6 s
-• Viento: 12 kn, rachas 16 kn del O
+• Mar: marejadilla, 0.4 m cada 6 s
+• Viento: bonancible (fuerza 4), 12 kn del O, rachas 16
+• Agua 27 °C (buenísima) · luz hasta las 20:55 (8 h 25 min)
 
-*⚠️ Aviso NARANJA en 3 h 14 min* (00:00)
+*🟡 Para salir con la moto*
+Aceptable. Se puede, pero vas a saltar bastante.
+_Mejor rato hoy: 13:00–15:00_
+
+*Lo que viene*
+  🟠 16:00 (en 3 h 30 min): sube a NARANJA — olas de 0.9 m, rachas de 22 nudos
+
+*⚠️ Aviso NARANJA en 3 h 30 min* (16:00)
   – olas de 0.9 m
-  – rachas de 22 nudos
   – viento de mar del O (entra directo en la cala)
 
-*Qué hacer:* Tienes margen (en 3 h 14 min). Aprovecha para bajar a por la moto
-o reforzar el amarre antes de que empeore.
+*Qué hacer:* Tienes margen. Aprovecha para bajar a por la moto o reforzar el
+amarre antes de que empeore.
 ```
 
 ---
@@ -33,7 +40,8 @@ consultan **cinco fuentes en paralelo** y se combinan:
 |---|---|---|---|
 | **Open-Meteo Marine** | Oleaje: ECMWF WAM, Météo-France, GFS-Wave, GWAM, EWAM | hasta 5 | No |
 | **Open-Meteo Forecast** | Viento y rachas: ECMWF, GFS, ICON, Météo-France, UKMO | 5 | No |
-| **Open-Meteo lluvia** | Lluvia y probabilidad, para contrastar avisos de AEMET | 1 | No |
+| **Open-Meteo lluvia y luz** | Lluvia, probabilidad, amanecer y atardecer | 1 | No |
+| **Open-Meteo agua** | Temperatura del mar | 1 | No |
 | **MET Norway (yr.no)** | Viento y rachas, otra organización y otro servidor | 1 | No |
 | **7Timer!** | Viento medio, tercera infraestructura independiente | 1 | No |
 | **AEMET** | Boletín y **avisos oficiales** de aguas de Ibiza | — | Sí, gratis |
@@ -123,6 +131,23 @@ Un aviso que solo mencione Menorca no escala nada, como antes.
 rachas por encima del umbral naranja ya no se rebaja el nivel: un viento de
 tierra fuerte puede arrancar el amarre y llevarse la moto **mar adentro**, que
 es bastante peor que dejarla contra la arena.
+
+**Lenguaje de mar, no solo cifras.** El mensaje traduce los números a lo que
+mira un patrón: el estado de la mar en la **escala Douglas** (calma chicha,
+mar rizada, marejadilla, marejada, fuerte marejada…) y el viento en
+**Beaufort** (ventolina, flojito, bonancible, fresco, temporal…), que son los
+mismos términos que usa AEMET.
+
+**¿Se puede salir?** Es una pregunta distinta a la de si la moto aguanta
+fondeada, así que tiene su propio apartado: si la mar está para planear a
+gusto o si vas a acabar con la espalda hecha polvo. Y propone el **mejor rato
+del día**, buscando el tramo más tranquilo **con luz** (de nada sirve que la
+mar esté como un plato a las cuatro de la mañana). Se añaden también la
+**temperatura del agua** y **cuánta luz queda** hasta el atardecer.
+
+*Se quitó a propósito el boletín completo de AEMET*: eran cinco líneas de
+sinóptica ("baja de 1014 al norte de Argelia…") que nadie lee en el móvil. De
+AEMET lo que importa es su aviso, y ese va arriba del todo.
 
 Niveles: 🟢 VERDE · 🟡 AMARILLO · 🟠 NARANJA · 🔴 ROJO (los mismos colores de AEMET).
 

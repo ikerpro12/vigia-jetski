@@ -116,11 +116,14 @@ def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
     quitar la razón a un aviso de AEMET** cuando los modelos de mar están
     planos.
     """
-    nombre = "Open-Meteo lluvia"
+    nombre = "Open-Meteo lluvia y luz"
     parametros = {
         "latitude": cfg.latitud,
         "longitude": cfg.longitud,
         "hourly": "precipitation,precipitation_probability",
+        # De paso salen el amanecer y el atardecer, que hacen falta para no
+        # proponerte salir a navegar de noche.
+        "daily": "sunrise,sunset,uv_index_max",
         "timezone": cfg.zona_horaria,
         "forecast_days": 2,
     }
@@ -144,6 +147,61 @@ def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
             instante=hora_local(marca, cfg.zona_horaria),
             lluvia_mm=lluvias[i] if i < len(lluvias) else None,
             prob_lluvia_pct=probabilidades[i] if i < len(probabilidades) else None,
+        )
+        for i, marca in enumerate(tiempos)
+    ]
+
+    # Efemérides de hoy. Si falta algo no pasa nada: es información de adorno.
+    amanecer = atardecer = None
+    uv = None
+    diario = datos.get("daily") or {}
+    try:
+        if diario.get("sunrise"):
+            amanecer = hora_local(diario["sunrise"][0], cfg.zona_horaria)
+        if diario.get("sunset"):
+            atardecer = hora_local(diario["sunset"][0], cfg.zona_horaria)
+        if diario.get("uv_index_max"):
+            uv = diario["uv_index_max"][0]
+    except (ValueError, IndexError, TypeError):
+        pass
+
+    return RespuestaFuente(
+        nombre=nombre,
+        lecturas=lecturas,
+        amanecer=amanecer,
+        atardecer=atardecer,
+        uv_max=uv,
+    )
+
+
+def temperatura_mar_open_meteo(cfg: Config) -> RespuestaFuente:
+    """Temperatura del agua. No decide nada, pero es lo primero que pregunta
+    todo el mundo antes de bajar a la playa."""
+    nombre = "Open-Meteo agua"
+    parametros = {
+        "latitude": cfg.latitud,
+        "longitude": cfg.longitud,
+        "hourly": "sea_surface_temperature",
+        "timezone": cfg.zona_horaria,
+        "forecast_days": 2,
+    }
+    try:
+        datos = pedir_json(
+            f"{MARINE}?{urlencode(parametros)}", tiempo_espera=cfg.tiempo_espera
+        )
+    except ErrorFuente as exc:
+        return RespuestaFuente(nombre=nombre, error=str(exc))
+
+    bloque = datos.get("hourly") or {}
+    tiempos = bloque.get("time") or []
+    temperaturas = bloque.get("sea_surface_temperature") or []
+    if not tiempos or not temperaturas:
+        return RespuestaFuente(nombre=nombre, error="sin temperatura del agua")
+
+    lecturas = [
+        Lectura(
+            instante=hora_local(marca, cfg.zona_horaria),
+            temperatura_mar_c=temperaturas[i] if i < len(temperaturas) else None,
         )
         for i, marca in enumerate(tiempos)
     ]

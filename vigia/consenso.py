@@ -95,6 +95,9 @@ def construir_consenso(
             if l.direccion_viento_grados is not None
         ]
         lluvias = [l.lluvia_mm for l in lecturas if l.lluvia_mm is not None]
+        aguas = [
+            l.temperatura_mar_c for l in lecturas if l.temperatura_mar_c is not None
+        ]
         probabilidades = [
             l.prob_lluvia_pct for l in lecturas if l.prob_lluvia_pct is not None
         ]
@@ -115,6 +118,7 @@ def construir_consenso(
                 # AEMET tiene fundamento, interesa el peor caso.
                 lluvia_mm=max(lluvias) if lluvias else None,
                 prob_lluvia_pct=max(probabilidades) if probabilidades else None,
+                temperatura_mar_c=_combinar(aguas),
                 fuentes_ola=len(alturas),
                 fuentes_viento=len(rachas) or len(vientos),
             )

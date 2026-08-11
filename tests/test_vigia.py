@@ -415,6 +415,106 @@ class PruebaLoQueViene(unittest.TestCase):
         self.assertIn("lluvia", texto.lower())
 
 
+class PruebaNautica(unittest.TestCase):
+    """Terminología de mar. Si esto se equivoca, canta muchísimo."""
+
+    def test_escala_douglas(self):
+        from vigia.nautica import estado_mar
+
+        # Los tramos de la escala son límite inferior: 0,2 m es marejadilla.
+        self.assertEqual(estado_mar(0.0), "calma chicha")
+        self.assertEqual(estado_mar(0.05), "mar rizada")
+        self.assertEqual(estado_mar(0.2), "marejadilla")
+        self.assertEqual(estado_mar(0.49), "marejadilla")
+        self.assertEqual(estado_mar(0.5), "marejada")
+        self.assertEqual(estado_mar(1.3), "fuerte marejada")
+        self.assertEqual(estado_mar(3.0), "mar gruesa")
+        self.assertEqual(estado_mar(None), "?")
+
+    def test_escala_beaufort(self):
+        from vigia.nautica import fuerza_viento
+
+        self.assertEqual(fuerza_viento(0.5)[0], 0)
+        self.assertEqual(fuerza_viento(5)[0], 2)
+        self.assertEqual(fuerza_viento(14)[0], 4)
+        self.assertEqual(fuerza_viento(25)[0], 6)
+        self.assertEqual(fuerza_viento(36)[0], 8)
+        self.assertEqual(fuerza_viento(80)[0], 12)
+
+    def test_veredicto_para_salir(self):
+        from vigia.nautica import veredicto_salida
+
+        self.assertEqual(veredicto_salida(0.1, 8)[0], "🟢")
+        self.assertEqual(veredicto_salida(0.6, 18)[0], "🟡")
+        self.assertEqual(veredicto_salida(0.9, 24)[0], "🟠")
+        self.assertEqual(veredicto_salida(1.5, 30)[0], "🔴")
+
+    def test_el_mar_picado_se_menciona(self):
+        from vigia.nautica import veredicto_salida
+
+        _, frase = veredicto_salida(0.3, 12, periodo_s=3.0)
+        self.assertIn("picada", frase)
+
+    def test_la_mejor_ventana_evita_la_noche(self):
+        """No tiene sentido proponer salir a las tres de la mañana."""
+        from vigia.nautica import mejor_ventana
+
+        amanecer = T0.replace(hour=7, minute=0)
+        atardecer = T0.replace(hour=21, minute=0)
+        serie = []
+        for i in range(24):
+            momento = T0.replace(hour=0, minute=0) + timedelta(hours=i)
+            # La mar más plana es de madrugada, pero no vale.
+            serie.append(Consenso(instante=momento,
+                                  altura_ola_m=0.05 if i < 5 else 0.3,
+                                  racha_nudos=5.0, periodo_ola_s=6.0))
+        ventana = mejor_ventana(serie, amanecer, atardecer)
+        self.assertIsNotNone(ventana)
+        self.assertGreaterEqual(ventana[0].hour, 7)
+        self.assertLessEqual(ventana[1].hour, 21)
+
+    def test_luz_restante(self):
+        from vigia.nautica import luz_restante
+
+        self.assertIsNone(luz_restante(T0, None))
+        self.assertIsNone(luz_restante(T0.replace(hour=22), T0.replace(hour=21)))
+        self.assertIn("2 h", luz_restante(T0, T0 + timedelta(hours=2)))
+
+
+class PruebaMensajeUtil(unittest.TestCase):
+    def _serie(self):
+        return [
+            Consenso(instante=T0 + timedelta(hours=i), altura_ola_m=0.25,
+                     periodo_ola_s=6.0, viento_nudos=9.0, racha_nudos=12.0,
+                     direccion_viento_grados=90.0, temperatura_mar_c=27.0,
+                     fuentes_ola=4)
+            for i in range(8)
+        ]
+
+    def test_ya_no_se_pega_el_boletin_entero(self):
+        """Eran cinco líneas de sinóptica que nadie lee en el móvil."""
+        respuestas = [RespuestaFuente(
+            nombre="AEMET",
+            boletin="Baja de 1014 al norte de Argelia con pocos cambios. " * 6,
+        )]
+        serie = self._serie()
+        _, texto = componer(cfg(), T0, serie, evaluar_serie(serie, cfg()), respuestas)
+        self.assertNotIn("Baja de 1014", texto)
+
+    def test_trae_la_informacion_util(self):
+        serie = self._serie()
+        respuestas = [RespuestaFuente(
+            nombre="luz", lecturas=[],
+            amanecer=T0.replace(hour=7), atardecer=T0.replace(hour=21),
+        )]
+        _, texto = componer(cfg(), T0, serie, evaluar_serie(serie, cfg()), respuestas)
+        self.assertIn("marejadilla", texto)          # estado de la mar
+        self.assertIn("fuerza", texto)               # Beaufort
+        self.assertIn("Para salir con la moto", texto)
+        self.assertIn("agua 27", texto.lower())      # temperatura del agua
+        self.assertIn("luz hasta", texto.lower())    # cuánta luz queda
+
+
 class PruebaHisteresis(unittest.TestCase):
     """El 11/08/2026 el nivel bailó alrededor del umbral y salieron seis
     mensajes en una hora: naranja, verde, naranja, naranja, verde, naranja.

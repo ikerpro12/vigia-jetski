@@ -15,6 +15,14 @@ from .evaluacion import (
     rumbo,
 )
 from .modelo import Consenso, Evaluacion, Nivel, RespuestaFuente
+from .nautica import (
+    descripcion_agua,
+    estado_mar,
+    fuerza_viento,
+    luz_restante,
+    mejor_ventana,
+    veredicto_salida,
+)
 
 CONSEJO = {
     Nivel.VERDE: "Mar tranquila. La moto puede quedarse donde está.",
@@ -115,31 +123,63 @@ def componer(
     lineas.append(f"_{ahora.strftime('%d/%m/%Y %H:%M')} · nivel {nivel.etiqueta}_")
     lineas.append("")
 
-    # Situación actual.
+    # Situación actual, en lenguaje de mar y no solo en cifras.
+    atardecer = next((r.atardecer for r in respuestas if r.atardecer), None)
+    amanecer = next((r.amanecer for r in respuestas if r.amanecer), None)
+
     if serie:
         actual = serie[0]
         lineas.append("*Ahora mismo*")
+
         if actual.altura_ola_m is not None:
-            detalle = f"• Olas: {actual.altura_ola_m:.1f} m"
+            detalle = f"• Mar: {estado_mar(actual.altura_ola_m)}, {actual.altura_ola_m:.1f} m"
+            if actual.periodo_ola_s:
+                detalle += f" cada {actual.periodo_ola_s:.0f} s"
             if (
                 actual.altura_ola_min_m is not None
                 and actual.altura_ola_max_m is not None
                 and actual.altura_ola_max_m - actual.altura_ola_min_m >= 0.15
             ):
                 detalle += (
-                    f" (fuentes: {actual.altura_ola_min_m:.1f}–"
-                    f"{actual.altura_ola_max_m:.1f} m)"
+                    f" _(modelos: {actual.altura_ola_min_m:.1f}–"
+                    f"{actual.altura_ola_max_m:.1f})_"
                 )
-            if actual.periodo_ola_s:
-                detalle += f", periodo {actual.periodo_ola_s:.0f} s"
             lineas.append(detalle)
+
         if actual.viento_nudos is not None:
-            viento = f"• Viento: {actual.viento_nudos:.0f} kn"
-            if actual.racha_nudos:
-                viento += f", rachas {actual.racha_nudos:.0f} kn"
+            grado, nombre = fuerza_viento(actual.viento_nudos)
+            viento = f"• Viento: {nombre} (fuerza {grado}), {actual.viento_nudos:.0f} kn"
             if actual.direccion_viento_grados is not None:
                 viento += f" del {rumbo(actual.direccion_viento_grados)}"
+            if actual.racha_nudos:
+                viento += f", rachas {actual.racha_nudos:.0f}"
             lineas.append(viento)
+
+        extras = []
+        if actual.temperatura_mar_c is not None:
+            extras.append(f"agua {descripcion_agua(actual.temperatura_mar_c)}")
+        queda = luz_restante(ahora, atardecer)
+        if queda and atardecer:
+            extras.append(f"luz hasta las {atardecer:%H:%M} ({queda})")
+        if extras:
+            # Solo la inicial: `.capitalize()` pondría "30 °c" en minúscula.
+            texto_extras = " · ".join(extras)
+            lineas.append(f"• {texto_extras[0].upper()}{texto_extras[1:]}")
+        lineas.append("")
+
+        # Veredicto para SALIR: otra pregunta distinta a la de si se hunde.
+        emoji, frase = veredicto_salida(
+            actual.altura_ola_m, actual.racha_nudos, actual.periodo_ola_s
+        )
+        lineas.append(f"*{emoji} Para salir con la moto*")
+        lineas.append(frase)
+        ventana = mejor_ventana(list(serie), amanecer, atardecer)
+        if ventana:
+            inicio, fin = ventana
+            cuando = "hoy" if inicio.date() == ahora.date() else "mañana"
+            lineas.append(
+                f"_Mejor rato {cuando}: {inicio:%H:%M}–{fin:%H:%M}_"
+            )
         lineas.append("")
 
     # El aviso oficial va antes que nada: es lo que más peso tiene.
@@ -215,16 +255,9 @@ def componer(
             lineas.append(f"  {_linea_hora(punto)}")
         lineas.append("")
 
-    # Boletín oficial, si lo hay.
-    for respuesta in respuestas:
-        if not respuesta.boletin:
-            continue
-        boletin = respuesta.boletin
-        if para_imagen and len(boletin) > 220:
-            boletin = boletin[:220].rsplit(" ", 1)[0] + "…"
-        lineas.append(f"*{respuesta.nombre}*")
-        lineas.append(f"_{boletin}_")
-        lineas.append("")
+    # El boletín completo de AEMET ya no se pega: eran cinco líneas de
+    # sinóptica ("baja de 1014 al norte de Argelia...") que nadie lee en el
+    # móvil. Lo que importa de AEMET es su aviso, y ese ya va arriba del todo.
 
     # Transparencia sobre las fuentes: importa saber cuántas respondieron.
     vivas = [r.nombre for r in respuestas if r.ok or r.boletin]

@@ -52,6 +52,7 @@ class Lectura:
     direccion_viento_grados: Optional[float] = None
     lluvia_mm: Optional[float] = None
     prob_lluvia_pct: Optional[float] = None
+    temperatura_mar_c: Optional[float] = None
 
     def tiene_datos(self) -> bool:
         return any(
@@ -78,6 +79,10 @@ class RespuestaFuente:
     aviso_oficial: Optional[str] = None
     # Cuota consumida hoy, para las fuentes que la reportan (Stormglass).
     peticiones_usadas: Optional[int] = None
+    # Efemérides del día: hasta cuándo hay luz para salir.
+    amanecer: Optional[datetime] = None
+    atardecer: Optional[datetime] = None
+    uv_max: Optional[float] = None
 
     @property
     def ok(self) -> bool:
@@ -101,6 +106,7 @@ class Consenso:
     direccion_viento_grados: Optional[float] = None
     lluvia_mm: Optional[float] = None
     prob_lluvia_pct: Optional[float] = None
+    temperatura_mar_c: Optional[float] = None
     fuentes_ola: int = 0
     fuentes_viento: int = 0
 

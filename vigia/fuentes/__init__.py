@@ -13,7 +13,12 @@ from ..config import Config
 from ..modelo import RespuestaFuente
 from .aemet import boletin_aemet
 from .met_norway import viento_met_norway
-from .open_meteo import lluvia_open_meteo, olas_open_meteo, viento_open_meteo
+from .open_meteo import (
+    lluvia_open_meteo,
+    olas_open_meteo,
+    temperatura_mar_open_meteo,
+    viento_open_meteo,
+)
 from .siete_timer import viento_7timer
 from .stormglass import olas_stormglass
 
@@ -26,6 +31,7 @@ FUENTES_LIBRES: list[Fuente] = [
     olas_open_meteo,
     viento_open_meteo,
     lluvia_open_meteo,
+    temperatura_mar_open_meteo,
     viento_met_norway,
     viento_7timer,
     boletin_aemet,
