@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from vigia.config import Config  # noqa: E402
 from vigia.consenso import construir_consenso  # noqa: E402
 from vigia.estado import (  # noqa: E402
+    Decision,
     Estado,
     actualizar,
     anotar_stormglass,
@@ -193,19 +194,22 @@ class PruebaTopeporDefecto(unittest.TestCase):
         self.assertEqual(c.escalada_minutos, 15)
 
     def test_el_segundo_aviso_cierra_el_episodio(self):
+        """Solo 2 ALERTAS por episodio. Los partes diarios van aparte y no
+        cuentan para el tope: se quieren igual durante un temporal."""
         estado = Estado()
         c = cfg()
         momento = T0
-        enviados = 0
+        alertas = 0
         # Cuatro horas de temporal, comprobando cada 5 minutos.
         for _ in range(48):
             d = decidir(estado, Nivel.NARANJA, momento, Nivel.NARANJA,
                         c.escalada_minutos, c.escalada_max, c.horas_parte)
             if d.enviar:
-                enviados += 1
+                if d.tipo == "alerta":
+                    alertas += 1
                 estado = actualizar(estado, Nivel.NARANJA, momento, d, True)
             momento += timedelta(minutes=5)
-        self.assertEqual(enviados, 2)
+        self.assertEqual(alertas, 2)
 
     def test_empeorar_a_rojo_sigue_pasando_el_tope(self):
         """Naranja a rojo no es spam: es información nueva."""
@@ -900,6 +904,61 @@ class PruebaSectorAmpliado(unittest.TestCase):
         c = cfg()
         for grados in (45, 90, 135, 170):
             self.assertFalse(es_viento_de_mar(grados, c), f"{grados}° no deberia entrar")
+
+
+
+
+class PruebaPartesDuranteElTemporal(unittest.TestCase):
+    """Cero spam es una cosa; quedarse tres dias a ciegas es otra.
+
+    Antes, con una alerta activa las alertas tapaban los partes diarios: dos
+    avisos la primera noche y despues sesenta horas de silencio absoluto,
+    justo cuando mas quieres saber como va.
+    """
+
+    def test_el_parte_sale_aunque_haya_alerta_activa(self):
+        c = cfg()
+        estado = Estado(
+            ultimo_nivel=int(Nivel.ROJO),
+            ultimo_aviso_iso=T0.isoformat(),
+            episodio_inicio_iso=T0.isoformat(),
+            episodio_mensajes=c.escalada_max,      # tope agotado
+            episodio_nivel_max=int(Nivel.ROJO),
+        )
+        momento = T0.replace(hour=14, minute=2)
+        d = decidir(estado, Nivel.ROJO, momento, Nivel.NARANJA,
+                    c.escalada_minutos, c.escalada_max, c.horas_parte, c.calma_minutos)
+        self.assertTrue(d.enviar)
+        self.assertEqual(d.tipo, "parte")
+        self.assertEqual(d.hora_parte, 14)
+
+    def test_fuera_de_hora_de_parte_sigue_callado(self):
+        c = cfg()
+        estado = Estado(
+            ultimo_nivel=int(Nivel.ROJO),
+            ultimo_aviso_iso=T0.isoformat(),
+            episodio_inicio_iso=T0.isoformat(),
+            episodio_mensajes=c.escalada_max,
+            episodio_nivel_max=int(Nivel.ROJO),
+        )
+        d = decidir(estado, Nivel.ROJO, T0.replace(hour=17), Nivel.NARANJA,
+                    c.escalada_minutos, c.escalada_max, c.horas_parte, c.calma_minutos)
+        self.assertFalse(d.enviar)
+
+    def test_el_parte_no_retrasa_la_siguiente_alerta(self):
+        """El reloj de la cadencia solo lo mueven las alertas."""
+        c = cfg()
+        estado = Estado(
+            ultimo_nivel=int(Nivel.NARANJA),
+            ultimo_aviso_iso=T0.isoformat(),
+            episodio_inicio_iso=T0.isoformat(),
+            episodio_mensajes=1,
+            episodio_nivel_max=int(Nivel.NARANJA),
+        )
+        parte = Decision(True, "parte", "parte", 14)
+        estado = actualizar(estado, Nivel.NARANJA, T0 + timedelta(minutes=5),
+                            parte, True, Nivel.NARANJA)
+        self.assertEqual(estado.ultimo_aviso_iso, T0.isoformat())
 
 
 if __name__ == "__main__":

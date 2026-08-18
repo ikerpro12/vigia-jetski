@@ -373,6 +373,13 @@ y está fijado en `PruebaHisteresis.test_el_caso_real_del_11_de_agosto`.
 
 Bajar a 🟡 amarillo tampoco cierra el episodio de golpe, por lo mismo.
 
+Los partes de 8:00, 14:00 y 23:00 **también salen durante un temporal**. Cero
+spam no puede significar quedarse tres días a ciegas: antes, las alertas
+tapaban los partes y un temporal largo eran dos avisos la primera noche y
+después sesenta horas de silencio. Ahora un temporal de tres días son unos
+**11 mensajes**: 2 avisos, 8 partes a horas fijas y el "ya pasó". Si un parte
+cae justo después de un aviso, se da por cubierto y no se repite.
+
 **Con la mar tranquila recibes exactamente 3 mensajes al día**: los partes de
 las **8:00, 14:00 y 23:00** (hora española), y nada más. Ni uno de relleno.
 Se configuran en `HORAS_PARTE`. Si el cron se despista y el parte de las 8:00

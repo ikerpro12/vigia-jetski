@@ -10,7 +10,11 @@ Reglas de cadencia:
     al tope, porque pasar de naranja a rojo sí merece interrumpir.
   * **Vuelta a la calma**: un único mensaje de "ya pasó" y se cierra el episodio.
   * **Partes diarios**: a las 8:00, 14:00 y 23:00 llega el parte pase lo que
-    pase, aunque esté todo en verde. No cuentan para el tope del episodio.
+    pase: en verde y también **con un aviso activo**. No cuentan para el tope
+    del episodio ni mueven su reloj. Sin esto, un temporal de tres días eran
+    dos avisos la primera noche y después sesenta horas de silencio, que es
+    justo cuando más quieres saber cómo va. Si acaba de salir un aviso, el
+    parte se da por cubierto y no se repite a los diez minutos.
 
 También lleva la cuenta del gasto diario de Stormglass, que va limitado.
 """
@@ -135,6 +139,9 @@ class Decision:
     motivo: str
     tipo: str  # "alerta" | "calma" | "parte" | "nada"
     hora_parte: Optional[int] = None
+    # Parte que se da por cubierto sin mandarlo: la alerta que acaba de salir
+    # ya contaba lo mismo. Se apunta como enviado para que no salte luego.
+    omitido: bool = False
 
 
 def decidir(
@@ -165,23 +172,42 @@ def decidir(
             return Decision(True, f"la situación empeora a {nivel.etiqueta}", "alerta")
 
         if estado.episodio_mensajes >= escalada_max:
-            return Decision(
-                False, f"tope de {escalada_max} avisos alcanzado en este episodio", "nada"
-            )
-
-        if minutos_desde < escalada_minutos:
-            return Decision(
-                False,
+            callar = f"tope de {escalada_max} avisos alcanzado en este episodio"
+        elif minutos_desde < escalada_minutos:
+            callar = (
                 f"solo han pasado {minutos_desde:.0f} min de los "
-                f"{escalada_minutos} de margen",
-                "nada",
+                f"{escalada_minutos} de margen"
+            )
+        else:
+            return Decision(
+                True,
+                f"sigue el peligro (aviso {estado.episodio_mensajes + 1} "
+                f"de {escalada_max})",
+                "alerta",
             )
 
-        return Decision(
-            True,
-            f"sigue el peligro (aviso {estado.episodio_mensajes + 1} de {escalada_max})",
-            "alerta",
-        )
+        # Aunque la alerta se calle, el parte diario sale igual. Si no, un
+        # temporal de tres días te dejaba dos avisos la primera noche y luego
+        # sesenta horas de silencio absoluto, que es justo cuando más quieres
+        # saber cómo va la cosa.
+        hora = parte_pendiente(estado, ahora, horas_parte)
+        if hora is not None:
+            # Si acaba de salir una alerta, el parte sería repetir lo mismo a
+            # los diez minutos. Se da por cubierto y no se manda.
+            if minutos_desde < 60:
+                return Decision(
+                    False,
+                    f"parte de las {hora}:00 cubierto por el aviso de hace "
+                    f"{minutos_desde:.0f} min",
+                    "parte",
+                    hora,
+                    omitido=True,
+                )
+            return Decision(
+                True, f"parte diario de las {hora}:00 (con aviso activo)", "parte", hora
+            )
+
+        return Decision(False, callar, "nada")
 
     # ---- Por debajo del umbral, con un episodio abierto ------------------
     # Aquí es donde se corta el baile aviso-calma-aviso-calma. Que el nivel
@@ -233,7 +259,7 @@ def actualizar(
     elif estado.en_episodio and estado.bajo_umbral_desde_iso is None:
         estado.bajo_umbral_desde_iso = ahora.isoformat()
 
-    if enviado:
+    if enviado and tipo in ("alerta", "calma"):
         estado.ultimo_aviso_iso = ahora.isoformat()
 
     if tipo == "alerta" and enviado:
@@ -251,7 +277,7 @@ def actualizar(
         estado.episodio_nivel_max = 0
         estado.bajo_umbral_desde_iso = None
 
-    elif tipo == "parte" and enviado:
+    elif tipo == "parte" and (enviado or decision.omitido):
         hoy = ahora.date().isoformat()
         if estado.partes_fecha != hoy:
             estado.partes_fecha = hoy
