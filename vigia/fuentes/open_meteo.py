@@ -16,7 +16,7 @@ from urllib.parse import urlencode
 
 from ..config import Config
 from ..modelo import Lectura, RespuestaFuente
-from .base import ErrorFuente, hora_local, pedir_json
+from .base import ErrorFuente, dias_prevision, hora_local, pedir_json
 
 MARINE = "https://marine-api.open-meteo.com/v1/marine"
 FORECAST = "https://api.open-meteo.com/v1/forecast"
@@ -58,7 +58,7 @@ def olas_open_meteo(cfg: Config) -> RespuestaFuente:
         "hourly": "wave_height,wave_period,wave_direction",
         "models": ",".join(MODELOS_OLA),
         "timezone": cfg.zona_horaria,
-        "forecast_days": 2,
+        "forecast_days": dias_prevision(cfg.horas_vista),
     }
     try:
         datos = pedir_json(
@@ -125,7 +125,7 @@ def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
         # proponerte salir a navegar de noche.
         "daily": "sunrise,sunset,uv_index_max",
         "timezone": cfg.zona_horaria,
-        "forecast_days": 2,
+        "forecast_days": dias_prevision(cfg.horas_vista),
     }
     try:
         datos = pedir_json(
@@ -183,7 +183,7 @@ def temperatura_mar_open_meteo(cfg: Config) -> RespuestaFuente:
         "longitude": cfg.longitud,
         "hourly": "sea_surface_temperature",
         "timezone": cfg.zona_horaria,
-        "forecast_days": 2,
+        "forecast_days": dias_prevision(cfg.horas_vista),
     }
     try:
         datos = pedir_json(
@@ -217,7 +217,7 @@ def viento_open_meteo(cfg: Config) -> RespuestaFuente:
         "models": ",".join(MODELOS_VIENTO),
         "wind_speed_unit": "kn",
         "timezone": cfg.zona_horaria,
-        "forecast_days": 2,
+        "forecast_days": dias_prevision(cfg.horas_vista),
     }
     try:
         datos = pedir_json(

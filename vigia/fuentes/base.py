@@ -147,3 +147,13 @@ def ms_a_nudos(metros_por_segundo: float) -> float:
 
 def truncar_hora(momento: datetime) -> datetime:
     return momento.replace(minute=0, second=0, microsecond=0)
+
+
+def dias_prevision(horas_vista: int) -> int:
+    """Días que hay que pedir a la API para cubrir la ventana de vigilancia.
+
+    Estaba fijo en 2, lo que bastaba para las 12 horas de siempre pero se
+    quedaba corto al pedir un pronóstico de varios días. Se suma un día de
+    margen porque la ventana empieza a media jornada.
+    """
+    return max(2, min(7, -(-horas_vista // 24) + 1))

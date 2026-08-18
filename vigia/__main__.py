@@ -6,6 +6,7 @@
     python -m vigia --probar       manda un mensaje de prueba al WhatsApp
     python -m vigia --simular      inventa un temporal para ver el aviso
     python -m vigia --sin-enviar   solo imprime, no envía nada
+    python -m vigia --pronostico 3 resumen de 3 días con los momentos clave
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from .estado import (
     parte_pendiente,
     toca_comprobar,
 )
-from .evaluacion import evaluar_serie
+from .evaluacion import evaluar_serie, rumbo
 from .fuentes import consultar_todas
 from .fuentes.base import ahora as ahora_en, truncar_hora
 from .grafico import dibujar_mapa
@@ -78,6 +79,8 @@ def construir_argumentos() -> argparse.ArgumentParser:
                         help="no generar el mapa, solo texto")
     parser.add_argument("--guardar-mapa", metavar="RUTA",
                         help="guardar el mapa en un PNG y salir")
+    parser.add_argument("--pronostico", type=int, metavar="DIAS", nargs="?", const=3,
+                        help="resumen de varios días con los momentos clave, y salir")
     return parser
 
 
@@ -271,6 +274,92 @@ def bucle(cfg: Config, args) -> int:
             return 0
 
 
+def pronostico(cfg: Config, dias: int) -> int:
+    """Resumen de varios dias senalando cuando hay que estar pendiente.
+
+    Va aparte del aviso normal por un motivo importante: el nivel de un aviso
+    es el peor de toda la ventana, asi que mirar 72 horas por defecto dejaria
+    el semaforo en rojo permanentemente durante un temporal y no serviria de
+    nada. Para vigilar se miran 12 horas; para planificar, se piden estas.
+    """
+    from .evaluacion import es_viento_de_mar
+    from .nautica import estado_mar
+
+    cfg.horas_vista = max(24, min(7 * 24, dias * 24))
+    momento = ahora_en(cfg.zona_horaria)
+    respuestas = consultar_todas(cfg)
+    serie = construir_consenso(respuestas, momento, cfg.horas_vista)
+    if not serie:
+        aviso("Sin datos de ninguna fuente.", error=True)
+        return 2
+    evaluaciones = evaluar_serie(serie, cfg)
+
+    aviso(f"PRONOSTICO {dias} DIAS - {cfg.lugar}")
+    aviso(f"{serie[0].instante:%d/%m %H:%M} -> {serie[-1].instante:%d/%m %H:%M}")
+    aviso("")
+
+    oficial = next((r.aviso_oficial for r in respuestas if r.aviso_oficial), None)
+    if oficial:
+        aviso(f"AVISO AEMET: {oficial}")
+        aviso("")
+
+    por_dia: dict = {}
+    for punto, evaluacion in zip(serie, evaluaciones):
+        por_dia.setdefault(punto.instante.date(), []).append((punto, evaluacion))
+
+    for dia, filas in sorted(por_dia.items()):
+        olas = [p.altura_ola_m for p, _ in filas if p.altura_ola_m is not None]
+        rachas = [p.racha_nudos for p, _ in filas if p.racha_nudos is not None]
+        peor = max(e.nivel for _, e in filas)
+        ola_max = max(olas or [0])
+        aviso(
+            f"{dia:%a %d/%m}  {peor.emoji} {peor.etiqueta:<8} "
+            f"ola hasta {ola_max:.2f} m ({estado_mar(ola_max)}) - "
+            f"rachas hasta {max(rachas or [0]):.0f} kn"
+        )
+
+    aviso("")
+    aviso("MOMENTOS PARA ESTAR PENDIENTE")
+    anterior = None
+    for punto, evaluacion in zip(serie, evaluaciones):
+        if anterior is not None and evaluacion.nivel > anterior:
+            entra = es_viento_de_mar(punto.direccion_viento_grados, cfg)
+            aviso(
+                f"  {evaluacion.nivel.emoji} {punto.instante:%a %d/%m %H:%M} "
+                f"sube a {evaluacion.nivel.etiqueta}: "
+                f"ola {punto.altura_ola_m or 0:.2f} m, "
+                f"racha {punto.racha_nudos or 0:.0f} kn del "
+                f"{rumbo(punto.direccion_viento_grados)}"
+                + (" (entra en la cala)" if entra else "")
+            )
+        anterior = evaluacion.nivel
+
+    pico = max(serie, key=lambda p: p.altura_ola_m or 0)
+    aviso("")
+    detalle = ""
+    if pico.altura_ola_min_m is not None and pico.altura_ola_max_m is not None:
+        detalle = (
+            f" (los modelos van de {pico.altura_ola_min_m:.2f} "
+            f"a {pico.altura_ola_max_m:.2f})"
+        )
+    aviso(
+        f"PICO: {pico.instante:%a %d/%m %H:%M} "
+        f"con {pico.altura_ola_m or 0:.2f} m{detalle}"
+    )
+
+    tranquilas = [
+        p
+        for p in serie
+        if (p.altura_ola_m or 9) < cfg.umbrales.ola_amarillo
+        and (p.racha_nudos or 99) < cfg.umbrales.racha_amarillo
+    ]
+    if tranquilas:
+        aviso(f"ULTIMO RATO TRANQUILO: hasta {tranquilas[-1].instante:%a %d/%m %H:%M}")
+    else:
+        aviso("ULTIMO RATO TRANQUILO: ninguno en toda la ventana")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     preparar_salida()
     args = construir_argumentos().parse_args(argv)
@@ -286,6 +375,9 @@ def main(argv: list[str] | None = None) -> int:
             aviso(f"  [{resultado.canal}] "
                   f"{'OK' if resultado.ok else 'FALLO'}: {resultado.detalle}")
         return 0
+
+    if args.pronostico:
+        return pronostico(cfg, args.pronostico)
 
     if args.guardar_mapa:
         momento = ahora_en(cfg.zona_horaria)
