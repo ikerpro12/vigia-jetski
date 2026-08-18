@@ -83,6 +83,38 @@ def _linea_hora(punto: Consenso) -> str:
     return " · ".join(trozos)
 
 
+def _bloque_proximos_dias(serie_larga, cfg, ahora) -> list[str]:
+    """Resumen por días de lo que viene después de la ventana de aviso."""
+    from .evaluacion import evaluar_serie
+
+    dias_nombre = ("lunes", "martes", "miércoles", "jueves",
+                   "viernes", "sábado", "domingo")
+
+    evaluaciones = evaluar_serie(list(serie_larga), cfg)
+    por_dia: dict = {}
+    for punto, evaluacion in zip(serie_larga, evaluaciones):
+        if punto.instante.date() == ahora.date():
+            continue  # hoy ya está contado más arriba
+        por_dia.setdefault(punto.instante.date(), []).append((punto, evaluacion))
+
+    filas = []
+    for dia, valores in sorted(por_dia.items()):
+        peor = max(e.nivel for _, e in valores)
+        if peor < Nivel.AMARILLO:
+            continue  # un día tranquilo no merece ocupar sitio
+        olas = [p.altura_ola_m for p, _ in valores if p.altura_ola_m is not None]
+        rachas = [p.racha_nudos for p, _ in valores if p.racha_nudos is not None]
+        filas.append(
+            f"  {peor.emoji} {dias_nombre[dia.weekday()].capitalize()} "
+            f"{dia:%d/%m}: hasta {max(olas or [0]):.1f} m "
+            f"y {max(rachas or [0]):.0f} kn"
+        )
+
+    if not filas:
+        return []
+    return ["*Próximos días*"] + filas + [""]
+
+
 def componer(
     cfg: Config,
     ahora: datetime,
@@ -90,6 +122,7 @@ def componer(
     evaluaciones: list[Evaluacion],
     respuestas: list[RespuestaFuente],
     para_imagen: bool = False,
+    serie_larga: Optional[list[Consenso]] = None,
 ) -> tuple[Nivel, str]:
     """Devuelve (nivel máximo de la ventana, texto del mensaje).
 
@@ -258,6 +291,17 @@ def componer(
     # El boletín completo de AEMET ya no se pega: eran cinco líneas de
     # sinóptica ("baja de 1014 al norte de Argelia...") que nadie lee en el
     # móvil. Lo que importa de AEMET es su aviso, y ese ya va arriba del todo.
+
+    # Pronóstico a varios días. Solo en los partes diarios, y solo si hay algo
+    # que contar más allá de la ventana de aviso.
+    #
+    # Este bloque existe por un fallo real: el temporal del 19-21/08/2026 se
+    # veía venir con dos días, pero el vigía solo mira 12 horas y no dijo nada
+    # hasta tenerlo encima. Subir la ventana de aviso no vale, porque el nivel
+    # es el peor de toda ella y el semáforo se quedaría en rojo tres días
+    # seguidos. Así que la previsión larga informa, pero no dispara.
+    if serie_larga:
+        lineas.extend(_bloque_proximos_dias(serie_larga, cfg, ahora))
 
     # Transparencia sobre las fuentes: importa saber cuántas respondieron.
     vivas = [r.nombre for r in respuestas if r.ok or r.boletin]

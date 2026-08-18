@@ -836,5 +836,71 @@ class PruebaSecretos(unittest.TestCase):
             del os.environ["STORMGLASS_KEY"]
 
 
+
+
+class PruebaProximosDias(unittest.TestCase):
+    """El fallo que motivo esto: el temporal del 19-21/08/2026 se veia venir
+    con dos dias, pero el vigia solo mira 12 h y no dijo nada hasta tenerlo
+    encima."""
+
+    def _larga(self, horas=72, ola_desde=24, ola=1.4):
+        return [
+            Consenso(
+                instante=T0 + timedelta(hours=i),
+                altura_ola_m=0.2 if i < ola_desde else ola,
+                periodo_ola_s=6.0,
+                racha_nudos=8.0 if i < ola_desde else 24.0,
+                direccion_viento_grados=265.0,
+                fuentes_ola=4,
+            )
+            for i in range(horas)
+        ]
+
+    def test_el_parte_avisa_de_lo_que_viene_pasado_manana(self):
+        corta = self._larga()[:13]
+        _, texto = componer(
+            cfg(), T0, corta, evaluar_serie(corta, cfg()), [],
+            serie_larga=self._larga(),
+        )
+        self.assertIn("Próximos días", texto)
+
+    def test_el_pronostico_largo_no_cambia_el_nivel_del_aviso(self):
+        """Lo importante: informar sin dejar el semaforo en rojo tres dias."""
+        corta = self._larga()[:13]
+        sin, _ = componer(cfg(), T0, corta, evaluar_serie(corta, cfg()), [])
+        con, _ = componer(
+            cfg(), T0, corta, evaluar_serie(corta, cfg()), [],
+            serie_larga=self._larga(),
+        )
+        self.assertEqual(sin, con)
+        self.assertEqual(con, Nivel.VERDE)
+
+    def test_si_no_hay_nada_que_contar_no_ocupa_sitio(self):
+        tranquila = [
+            Consenso(instante=T0 + timedelta(hours=i), altura_ola_m=0.15,
+                     periodo_ola_s=6.0, racha_nudos=6.0,
+                     direccion_viento_grados=90.0, fuentes_ola=4)
+            for i in range(72)
+        ]
+        _, texto = componer(
+            cfg(), T0, tranquila[:13], evaluar_serie(tranquila[:13], cfg()), [],
+            serie_larga=tranquila,
+        )
+        self.assertNotIn("Próximos días", texto)
+
+
+class PruebaSectorAmpliado(unittest.TestCase):
+    def test_el_sur_ya_cuenta_como_viento_que_entra(self):
+        """El temporal vino del SSO, justo en el borde antiguo de 202,5."""
+        c = cfg()
+        for grados in (190, 195, 202, 210, 225):
+            self.assertTrue(es_viento_de_mar(grados, c), f"{grados}° deberia entrar")
+
+    def test_el_levante_sigue_sin_entrar(self):
+        c = cfg()
+        for grados in (45, 90, 135, 170):
+            self.assertFalse(es_viento_de_mar(grados, c), f"{grados}° no deberia entrar")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

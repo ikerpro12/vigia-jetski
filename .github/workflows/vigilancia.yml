@@ -106,6 +106,10 @@ jobs:
           AEMET_COSTA: "44"
           ZONA_AEMET: "Ibiza"
           HORAS_PARTE: "8,14,23"
+          # Los partes diarios miran 3 dias, pero solo para informar:
+          # el nivel del aviso sigue saliendo de las 12 h.
+          HORAS_PRONOSTICO: "72"
+          SECTOR_MAR_DESDE: "190"
           # Como mucho 2 avisos por episodio, separados 15 min.
           ESCALADA_MINUTOS: "15"
           ESCALADA_MAX: "2"

@@ -81,10 +81,16 @@ La combinación no es una media ingenua:
 
 Esto es lo que lo hace útil de verdad para Cala Tarida en concreto:
 
-**Viento de mar.** La cala mira al oeste. Con viento del sector SO–NO el
-oleaje entra de lleno y además empuja la moto contra la costa: es la situación
-peligrosa, y **sube un nivel el aviso**. Con viento de levante la cala queda a
-resguardo y la misma ola es mucho menos preocupante, así que **baja un nivel**.
+**Viento de mar.** La cala mira al oeste. Con viento del sector **S–NO**
+(190°–337,5°) el oleaje entra de lleno y además empuja la moto contra la
+costa: es la situación peligrosa, y **sube un nivel el aviso**. Con viento de
+levante la cala queda a resguardo y la misma ola es mucho menos preocupante,
+así que **baja un nivel**.
+
+> El sector empezaba en 202,5° (SSO), pero el temporal del 19-21/08/2026 vino
+> justo de ese rumbo y la clasificación bailaba con décimas de grado: el nivel
+> entraba y salía de rojo cada hora. Se bajó a **190°**, porque con viento del
+> sur la mar entra en la cala igual.
 
 **Periodo corto.** Un mar de viento picado (menos de 4 s entre olas) castiga
 el amarre mucho más que un mar de fondo largo de la misma altura. También suma.
@@ -308,6 +314,44 @@ parte diario**, y **nunca frena si el último nivel conocido ya era peligroso**.
 
 Así, un temporal de cuatro horas son **2 mensajes**, no veinte. Hay una prueba
 que lo simula (`test_el_segundo_aviso_cierra_el_episodio`).
+
+### Próximos días: por qué los avisos miran 12 h pero el parte mira 3 días
+
+El 18/08/2026 se veía venir un temporal para el 19-21, y el vigía **no dijo
+nada**: empezaba a 13 horas vista y la ventana de aviso es de 12. Se enteraría
+esa misma noche, con el temporal ya encima y sin margen para sacar la moto por
+la mañana.
+
+Lo obvio sería subir `HORAS_VISTA` a 72, y es justo lo que **no** hay que
+hacer: el nivel de un aviso es **el peor de toda su ventana**, así que el
+semáforo se quedaría en 🔴 rojo tres días seguidos. Un aviso encendido
+permanentemente no avisa de nada, y encima taparía el momento de "esto ya es
+ahora".
+
+Así que van separados:
+
+| | Ventana | Para qué |
+|---|---|---|
+| **Avisos** | 12 h (`HORAS_VISTA`) | ¿bajo ya a por la moto? |
+| **Partes diarios** | 72 h (`HORAS_PRONOSTICO`) | ¿cuándo la saco del agua? |
+
+El bloque **«Próximos días»** solo sale en los partes de 8:00, 14:00 y 23:00,
+solo lista los días que llegan a amarillo o más, y **no toca el nivel del
+aviso**. Se aprovecha la misma descarga, así que no cuesta ni una petición
+extra.
+
+```
+*Próximos días*
+  🔴 Miércoles 19/08: hasta 1.0 m y 22 kn
+  🔴 Jueves 20/08: hasta 1.3 m y 25 kn
+  🔴 Viernes 21/08: hasta 1.6 m y 25 kn
+```
+
+Y para mirarlo cuando quieras, sin esperar al parte:
+
+```bash
+python -m vigia --pronostico 3
+```
 
 ### Histéresis: por qué no se dice "ya pasó" a la primera
 

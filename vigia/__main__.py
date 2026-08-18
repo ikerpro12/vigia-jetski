@@ -153,6 +153,7 @@ def una_pasada(cfg: Config, args, respetar_freno: bool = False) -> tuple[Nivel, 
         aviso("MODO SIMULACIÓN: datos inventados, no es el parte real.", error=True)
         respuestas = [RespuestaFuente(nombre="simulación", error="modo simulación")]
         serie = _serie_simulada(cfg, momento)
+        serie_larga = []
     else:
         usar_sg, razon_sg = _merece_stormglass(cfg, estado, momento)
         aviso(f"Stormglass: {'SÍ' if usar_sg else 'no'} ({razon_sg})", error=True)
@@ -171,6 +172,10 @@ def una_pasada(cfg: Config, args, respetar_freno: bool = False) -> tuple[Nivel, 
             estado = anotar_stormglass(estado, momento.date(), reportado)
 
         serie = construir_consenso(respuestas, momento, cfg.horas_vista)
+        # Misma descarga, ventana larga: solo informa, no dispara avisos.
+        serie_larga = construir_consenso(
+            respuestas, momento, cfg.horas_pronostico
+        )
 
     # Sin datos de ninguna fuente: eso también hay que contarlo.
     if not serie:
@@ -203,6 +208,13 @@ def una_pasada(cfg: Config, args, respetar_freno: bool = False) -> tuple[Nivel, 
     )
     if args.forzar or cfg.parte_diario:
         decision.enviar, decision.motivo = True, "envío forzado"
+
+    # El pronóstico de varios días solo va en los partes: en una alerta
+    # estorba, que ahí lo urgente es lo de las próximas horas.
+    if decision.tipo == "parte" and serie_larga:
+        _, texto = componer(
+            cfg, momento, serie, evaluaciones, respuestas, serie_larga=serie_larga
+        )
 
     aviso(
         f"Decisión: {'ENVIAR' if decision.enviar else 'callar'} "

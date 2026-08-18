@@ -58,7 +58,7 @@ def olas_open_meteo(cfg: Config) -> RespuestaFuente:
         "hourly": "wave_height,wave_period,wave_direction",
         "models": ",".join(MODELOS_OLA),
         "timezone": cfg.zona_horaria,
-        "forecast_days": dias_prevision(cfg.horas_vista),
+        "forecast_days": dias_prevision(max(cfg.horas_vista, cfg.horas_pronostico)),
     }
     try:
         datos = pedir_json(
@@ -125,7 +125,7 @@ def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
         # proponerte salir a navegar de noche.
         "daily": "sunrise,sunset,uv_index_max",
         "timezone": cfg.zona_horaria,
-        "forecast_days": dias_prevision(cfg.horas_vista),
+        "forecast_days": dias_prevision(max(cfg.horas_vista, cfg.horas_pronostico)),
     }
     try:
         datos = pedir_json(
@@ -183,7 +183,7 @@ def temperatura_mar_open_meteo(cfg: Config) -> RespuestaFuente:
         "longitude": cfg.longitud,
         "hourly": "sea_surface_temperature",
         "timezone": cfg.zona_horaria,
-        "forecast_days": dias_prevision(cfg.horas_vista),
+        "forecast_days": dias_prevision(max(cfg.horas_vista, cfg.horas_pronostico)),
     }
     try:
         datos = pedir_json(
@@ -217,7 +217,7 @@ def viento_open_meteo(cfg: Config) -> RespuestaFuente:
         "models": ",".join(MODELOS_VIENTO),
         "wind_speed_unit": "kn",
         "timezone": cfg.zona_horaria,
-        "forecast_days": dias_prevision(cfg.horas_vista),
+        "forecast_days": dias_prevision(max(cfg.horas_vista, cfg.horas_pronostico)),
     }
     try:
         datos = pedir_json(

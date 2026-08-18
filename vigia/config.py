@@ -106,11 +106,18 @@ class Config:
 
     # La cala mira al oeste: el viento de este sector entra de lleno.
     # Sector de "viento de mar" (onshore) en grados, de dónde VIENE el viento.
-    sector_mar_desde: float = 202.5  # SSO
+    # Se baja de 202,5 a 190: el temporal del 19-21/08/2026 vino del SSO,
+    # justo en el borde, y la clasificacion 'entra en la cala' bailaba con
+    # decimas de grado. Con viento del sur la mar entra igual.
+    sector_mar_desde: float = 190.0  # S-SSO
     sector_mar_hasta: float = 337.5  # NNO
 
     # --- Vigilancia -------------------------------------------------------
-    horas_vista: int = 12          # cuántas horas por delante miramos
+    horas_vista: int = 12          # ventana de los AVISOS
+    # Ventana del pronostico informativo de los partes diarios. Va aparte
+    # a proposito: el nivel de un aviso es el peor de toda su ventana, asi
+    # que vigilar a 72 h dejaria el semaforo en rojo todo el temporal.
+    horas_pronostico: int = 72
     nivel_minimo_aviso: int = 2    # a partir de NARANJA se manda WhatsApp
 
     # --- Fuentes opcionales (con clave) -----------------------------------
@@ -178,9 +185,10 @@ class Config:
             longitud=_flotante("LONGITUD", 1.2264),
             lugar=os.environ.get("LUGAR", "Cala Tarida (Ibiza)"),
             zona_horaria=os.environ.get("ZONA_HORARIA", "Europe/Madrid"),
-            sector_mar_desde=_flotante("SECTOR_MAR_DESDE", 202.5),
+            sector_mar_desde=_flotante("SECTOR_MAR_DESDE", 190.0),
             sector_mar_hasta=_flotante("SECTOR_MAR_HASTA", 337.5),
             horas_vista=_entero("HORAS_VISTA", 12),
+            horas_pronostico=_entero("HORAS_PRONOSTICO", 72),
             nivel_minimo_aviso=_entero("NIVEL_MINIMO_AVISO", 2),
             stormglass_key=os.environ.get("STORMGLASS_KEY") or None,
             aemet_key=os.environ.get("AEMET_KEY") or None,
