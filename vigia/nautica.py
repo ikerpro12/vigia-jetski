@@ -170,3 +170,19 @@ def descripcion_agua(grados: Optional[float]) -> str:
     if grados >= 16:
         return f"{grados:.0f} °C (fresquita)"
     return f"{grados:.0f} °C (fría, mejor con neopreno)"
+
+
+def nudos_a_kmh(nudos: Optional[float]) -> Optional[float]:
+    """1 nudo = 1,852 km/h. En el mensaje se enseñan las dos unidades: los
+    nudos son lo que usan los partes marítimos, pero el km/h es lo que uno
+    tiene en la cabeza."""
+    if nudos is None:
+        return None
+    return nudos * 1.852
+
+
+def viento_con_unidades(nudos: Optional[float]) -> str:
+    """'12 kn (22 km/h)'."""
+    if nudos is None:
+        return "?"
+    return f"{nudos:.0f} kn ({nudos * 1.852:.0f} km/h)"

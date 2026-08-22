@@ -22,6 +22,7 @@ from .nautica import (
     luz_restante,
     mejor_ventana,
     veredicto_salida,
+    viento_con_unidades,
 )
 
 CONSEJO = {
@@ -73,11 +74,12 @@ def _consejo(nivel: Nivel, ahora: datetime, disparo: Optional[Evaluacion]) -> st
 
 
 def _linea_hora(punto: Consenso) -> str:
+    """La ola primero y en negrita: es lo que decide si la moto aguanta."""
     trozos = [punto.instante.strftime("%H:%M")]
     if punto.altura_ola_m is not None:
-        trozos.append(f"olas {punto.altura_ola_m:.1f} m")
+        trozos.append(f"*{punto.altura_ola_m:.1f} m*")
     if punto.racha_nudos is not None:
-        trozos.append(f"rachas {punto.racha_nudos:.0f} kn")
+        trozos.append(f"{punto.racha_nudos:.0f} kn/{punto.racha_nudos * 1.852:.0f} kmh")
     if punto.direccion_viento_grados is not None:
         trozos.append(rumbo(punto.direccion_viento_grados))
     return " · ".join(trozos)
@@ -104,10 +106,11 @@ def _bloque_proximos_dias(serie_larga, cfg, ahora) -> list[str]:
             continue  # un día tranquilo no merece ocupar sitio
         olas = [p.altura_ola_m for p, _ in valores if p.altura_ola_m is not None]
         rachas = [p.racha_nudos for p, _ in valores if p.racha_nudos is not None]
+        racha_max = max(rachas or [0])
         filas.append(
             f"  {peor.emoji} {dias_nombre[dia.weekday()].capitalize()} "
-            f"{dia:%d/%m}: hasta {max(olas or [0]):.1f} m "
-            f"y {max(rachas or [0]):.0f} kn"
+            f"{dia:%d/%m}: hasta *{max(olas or [0]):.1f} m* "
+            f"y {racha_max:.0f} kn ({racha_max * 1.852:.0f} km/h)"
         )
 
     if not filas:
@@ -181,11 +184,14 @@ def componer(
 
         if actual.viento_nudos is not None:
             grado, nombre = fuerza_viento(actual.viento_nudos)
-            viento = f"• Viento: {nombre} (fuerza {grado}), {actual.viento_nudos:.0f} kn"
+            viento = (
+                f"• Viento: {nombre} (fuerza {grado}), "
+                f"{viento_con_unidades(actual.viento_nudos)}"
+            )
             if actual.direccion_viento_grados is not None:
                 viento += f" del {rumbo(actual.direccion_viento_grados)}"
             if actual.racha_nudos:
-                viento += f", rachas {actual.racha_nudos:.0f}"
+                viento += f", rachas {viento_con_unidades(actual.racha_nudos)}"
             lineas.append(viento)
 
         extras = []

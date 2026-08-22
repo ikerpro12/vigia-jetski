@@ -25,6 +25,7 @@ from typing import Optional, Sequence
 from ..modelo import Consenso, Evaluacion, Nivel
 from .costa import CONTORNO_IBIZA
 from .lienzo import Color, Lienzo, mezclar
+from ..nautica import estado_mar
 from .tipografia import ancho_texto, centrado, escribir
 
 # --- Paleta de carta náutica nocturna --------------------------------------
@@ -433,7 +434,10 @@ def dibujar_mapa(
 
         titulo = f"VIENTO DEL {a_rumbo(rumbo)}"
         if actual and actual.racha_nudos:
-            titulo += f"  ·  {actual.racha_nudos:.0f} KN"
+            titulo += (
+                f"  ·  {actual.racha_nudos:.0f} KN "
+                f"({actual.racha_nudos * 1.852:.0f} KM/H)"
+            )
         aclara = "ENTRA EN LA CALA" if de_mar else "LA CALA ESTA A RESGUARDO"
         panel_ancho = max(ancho_texto(titulo, 2 * SS), ancho_texto(aclara, 2 * SS)) + 24 * SS
         _pastilla(L, 16 * SS, mapa_y0 + 12 * SS, 16 * SS + panel_ancho,
@@ -458,30 +462,51 @@ def dibujar_mapa(
 
     # ---- Cifras ----------------------------------------------------------
     y = mapa_y0 + mapa_alto
-    franja = 92 * SS
+    franja = 100 * SS
     L.degradado_vertical(0, y, ancho * SS, y + franja, PANEL, NOCHE_BAJA)
 
     if actual:
-        casillas = []
-        if actual.altura_ola_m is not None:
-            casillas.append(("OLA", f"{actual.altura_ola_m:.1f}", "M"))
-        if actual.racha_nudos is not None:
-            casillas.append(("RACHAS", f"{actual.racha_nudos:.0f}", "KN"))
-        if actual.periodo_ola_s is not None:
-            casillas.append(("PERIODO", f"{actual.periodo_ola_s:.0f}", "S"))
-        if actual.fuentes_ola:
-            casillas.append(("MODELOS", str(actual.fuentes_ola), ""))
+        # La OLA manda: es lo que decide si la moto aguanta fondeada, asi que
+        # va en un panel propio y al doble de tamano que el resto.
+        panel_ola = int(ancho * SS * 0.42)
+        L.rect(0, y, panel_ola, y + franja, mezclar(PANEL, acento, 0.13))
+        L.rect(0, y, int(4.5 * SS), y + franja, acento)
 
-        hueco = (ancho * SS - 48 * SS) / max(1, len(casillas))
-        for i, (titulo, valor, unidad) in enumerate(casillas):
-            bx = int(24 * SS + i * hueco)
-            if i:
-                L.rect(bx - 12 * SS, y + 22 * SS, bx - 12 * SS + max(1, SS // 2),
-                       y + 68 * SS, mezclar(PANEL, TEXTO_TENUE, 0.25))
-            escribir(L, bx, y + 22 * SS, titulo, TEXTO_TENUE, SS + 1)
-            usado = escribir(L, bx, y + 40 * SS, valor, TEXTO, 4 * SS, negrita=True)
+        escribir(L, 24 * SS, y + 11 * SS, "OLA", TEXTO_TENUE, SS + 1)
+        if actual.altura_ola_m is not None:
+            # Cuidado con las alturas: el glifo mide 7 filas, asi que a
+            # escala 6*SS ocupa 42 px reales. Si el numero empieza en +24,
+            # acaba en +66 y el estado de la mar cabe justo debajo.
+            usado = escribir(L, 24 * SS, y + 26 * SS,
+                             f"{actual.altura_ola_m:.1f}", TEXTO, 6 * SS, negrita=True)
+            escribir(L, 24 * SS + usado + 4 * SS, y + 50 * SS, "M", TEXTO_TENUE, 2 * SS)
+            escribir(L, 24 * SS, y + 76 * SS,
+                     estado_mar(actual.altura_ola_m), acento, SS + 1)
+        else:
+            escribir(L, 24 * SS, y + 34 * SS, "?", TEXTO, 6 * SS, negrita=True)
+
+        # El resto, mas pequeno y a la derecha.
+        casillas = []
+        if actual.racha_nudos is not None:
+            casillas.append((
+                "RACHAS", f"{actual.racha_nudos:.0f}", "KN",
+                f"{actual.racha_nudos * 1.852:.0f} KM/H",
+            ))
+        if actual.periodo_ola_s is not None:
+            casillas.append(("PERIODO", f"{actual.periodo_ola_s:.0f}", "S", ""))
+        if actual.fuentes_ola:
+            casillas.append(("MODELOS", str(actual.fuentes_ola), "", ""))
+
+        libre = ancho * SS - panel_ola - 24 * SS
+        hueco = libre / max(1, len(casillas))
+        for i, (titulo, valor, unidad, pie) in enumerate(casillas):
+            bx = int(panel_ola + 20 * SS + i * hueco)
+            escribir(L, bx, y + 20 * SS, titulo, TEXTO_TENUE, SS)
+            usado = escribir(L, bx, y + 34 * SS, valor, TEXTO, 4 * SS, negrita=True)
             if unidad:
-                escribir(L, bx + usado + 3 * SS, y + 54 * SS, unidad, TEXTO_TENUE, SS + 1)
+                escribir(L, bx + usado + 3 * SS, y + 48 * SS, unidad, TEXTO_TENUE, SS)
+            if pie:
+                escribir(L, bx, y + 66 * SS, pie, TEXTO_TENUE, SS)
 
     # ---- Curva de previsión ----------------------------------------------
     y += franja + 30 * SS

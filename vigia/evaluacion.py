@@ -86,7 +86,10 @@ def evaluar_hora(punto: Consenso, cfg: Config) -> Evaluacion:
     if nivel_ola > Nivel.VERDE and punto.altura_ola_m is not None:
         motivos.append(f"olas de {punto.altura_ola_m:.1f} m")
     if nivel_racha > Nivel.VERDE and punto.racha_nudos is not None:
-        motivos.append(f"rachas de {punto.racha_nudos:.0f} nudos")
+        motivos.append(
+            f"rachas de {punto.racha_nudos:.0f} kn "
+            f"({punto.racha_nudos * 1.852:.0f} km/h)"
+        )
 
     de_mar = es_viento_de_mar(punto.direccion_viento_grados, cfg)
 
