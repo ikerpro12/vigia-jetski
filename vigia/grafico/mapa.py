@@ -7,7 +7,7 @@ fondeada.
 
 Todo responde a la misma pregunta: **¿el viento entra en la cala o no?**
 
-  * Isla real de Ibiza con Cala Tarida marcada.
+  * Isla real de Ibiza con la cala marcada (sale de la configuracion).
   * Cuña sobre el sector expuesto (SO-NO): si el viento cae dentro, entra mar.
   * Líneas de corriente de viento, curvadas y afiladas, en vez de flechitas.
   * Textura de olas cuya intensidad crece con la altura prevista.
@@ -419,7 +419,8 @@ def dibujar_mapa(
     L.circulo(int(cx), int(cy), int(7 * SS), TEXTO)
     L.circulo(int(cx), int(cy), int(4.5 * SS), acento)
 
-    eti = "CALA TARIDA"
+    # El nombre sale de la configuracion: sin el parentesis del municipio.
+    eti = cfg.lugar.split("(")[0].strip().upper()
     ex = int(cx) + 16 * SS
     _pastilla(L, ex - 5 * SS, int(cy) - 9 * SS,
               ex + ancho_texto(eti, SS + 1) + 5 * SS, int(cy) + 8 * SS,
@@ -443,7 +444,11 @@ def dibujar_mapa(
 
     # Leyenda de la cuña, sobre pastilla: si no, las corrientes de viento le
     # pasan por encima y no hay quien la lea.
-    leyenda = "SECTOR EXPUESTO SO-NO"
+    from ..evaluacion import rumbo as _rumbo
+    leyenda = (
+        f"SECTOR EXPUESTO {_rumbo(cfg.sector_mar_desde)}-"
+        f"{_rumbo(cfg.sector_mar_hasta)}"
+    )
     _pastilla(L, 16 * SS, mapa_y0 + mapa_alto - 26 * SS,
               16 * SS + ancho_texto(leyenda, SS) + 20 * SS,
               mapa_y0 + mapa_alto - 8 * SS,

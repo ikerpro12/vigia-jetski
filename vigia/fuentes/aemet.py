@@ -20,8 +20,10 @@ Clave gratuita en https://opendata.aemet.es/centrodedescargas/altaUsuario
 from __future__ import annotations
 
 import gzip
+import http.client
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -158,7 +160,7 @@ def boletin_aemet(cfg: Config) -> RespuestaFuente:
         boletin = boletin[:700].rsplit(" ", 1)[0] + "…"
 
     # Solo se escala el nivel si el aviso menciona nuestra zona. Un aviso por
-    # temporal en Menorca no debe hacer bajar a nadie a Cala Tarida.
+    # temporal en Menorca no debe hacer bajar a nadie a Cala Corral.
     aviso_relevante = None
     if hay_aviso and zona_interes.lower() in aviso.lower():
         aviso_relevante = aviso

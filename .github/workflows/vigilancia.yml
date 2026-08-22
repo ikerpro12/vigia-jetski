@@ -109,7 +109,8 @@ jobs:
           # Los partes diarios miran 3 dias, pero solo para informar:
           # el nivel del aviso sigue saliendo de las 12 h.
           HORAS_PRONOSTICO: "72"
-          SECTOR_MAR_DESDE: "190"
+          SECTOR_MAR_DESDE: "186"
+          SECTOR_MAR_HASTA: "336"
           # Como mucho 2 avisos por episodio, separados 15 min.
           ESCALADA_MINUTOS: "15"
           ESCALADA_MAX: "2"

@@ -961,5 +961,34 @@ class PruebaPartesDuranteElTemporal(unittest.TestCase):
         self.assertEqual(estado.ultimo_aviso_iso, T0.isoformat())
 
 
+
+
+class PruebaPeriodoCortoSoloConMar(unittest.TestCase):
+    """Con 20 cm de rizado, el periodo da igual.
+
+    Salia ROJO con 0,2 m de ola: racha amarilla + viento de mar + periodo
+    corto sumaban dos escalones sobre una mar practicamente plana.
+    """
+
+    def test_no_escala_por_periodo_si_no_hay_ola(self):
+        p = Consenso(instante=T0, altura_ola_m=0.2, racha_nudos=18.0,
+                     periodo_ola_s=3.5, direccion_viento_grados=200.0)
+        e = evaluar_hora(p, cfg())
+        self.assertLess(e.nivel, Nivel.ROJO)
+        self.assertFalse(any("periodo corto" in m for m in e.motivos))
+
+    def test_con_mar_de_verdad_si_escala(self):
+        # 1,0 m es naranja; el viento de tierra lo baja a amarillo, y desde
+        # ahi el periodo corto si tiene que sumar.
+        largo = evaluar_hora(
+            Consenso(instante=T0, altura_ola_m=1.0, racha_nudos=12.0,
+                     periodo_ola_s=8.0, direccion_viento_grados=90.0), cfg())
+        corto = evaluar_hora(
+            Consenso(instante=T0, altura_ola_m=1.0, racha_nudos=12.0,
+                     periodo_ola_s=3.5, direccion_viento_grados=90.0), cfg())
+        self.assertGreater(corto.nivel, largo.nivel)
+        self.assertTrue(any("periodo corto" in m for m in corto.motivos))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

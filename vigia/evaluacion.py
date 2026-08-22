@@ -2,7 +2,8 @@
 
 Dos ideas importantes más allá de "ola alta = malo":
 
-1. VIENTO DE MAR. Cala Tarida mira al oeste. Con viento del sector SO-NO el
+1. VIENTO DE MAR. Cala Corral se abre al oeste (rumbo 261, calculado con la
+   linea de costa de OpenStreetMap). Con viento del sector S-NNO el
    oleaje entra directo en la cala y además empuja la moto hacia la costa: es
    la situación peligrosa. Con viento de levante la cala queda a resguardo y
    la misma altura de ola es mucho menos preocupante. Por eso el viento de mar
@@ -117,11 +118,16 @@ def evaluar_hora(punto: Consenso, cfg: Config) -> Evaluacion:
                 "(la cala queda a resguardo)"
             )
 
-    # Mar de viento corto y picado: castiga más el amarre.
+    # Mar de viento corto y picado: castiga más el amarre. Pero solo si hay
+    # mar de verdad. Con 20 cm de rizado el periodo da igual, y sin este
+    # filtro salian rojos absurdos: racha amarilla + viento de mar + periodo
+    # corto sumaban dos escalones sobre una mar practicamente plana.
     if (
         punto.periodo_ola_s is not None
         and punto.periodo_ola_s < 4.0
         and nivel >= Nivel.AMARILLO
+        and punto.altura_ola_m is not None
+        and punto.altura_ola_m >= u.ola_amarillo
     ):
         nivel = _acotar(nivel + 1)
         motivos.append(f"periodo corto de {punto.periodo_ola_s:.1f} s (mar picada)")
@@ -158,7 +164,7 @@ def corrobora_aviso(serie: list[Consenso], cfg: Config) -> tuple[bool, str]:
     AEMET avisa por zonas grandes y por fenómenos que un modelo de oleaje no
     ve (tormentas, turbonadas). Pero un aviso para "aguas de Ibiza y
     Formentera" puede referirse a un chubasco al otro lado de la isla mientras
-    en Cala Tarida no pasa nada.
+    en Cala Corral no pasa nada.
 
     Se busca cualquier indicio en las próximas horas: mar que se levanta,
     rachas que suben o lluvia prevista. Si no hay ninguno, el aviso se enseña

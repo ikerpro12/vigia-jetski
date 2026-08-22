@@ -156,4 +156,4 @@ def dias_prevision(horas_vista: int) -> int:
     quedaba corto al pedir un pronóstico de varios días. Se suma un día de
     margen porque la ventana empieza a media jornada.
     """
-    return max(2, min(7, -(-horas_vista // 24) + 1))
+    return max(2, min(10, -(-horas_vista // 24) + 1))

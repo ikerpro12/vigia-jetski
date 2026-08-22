@@ -98,19 +98,22 @@ class Umbrales:
 @dataclass
 class Config:
     # --- Ubicación --------------------------------------------------------
-    # Cala Tarida, costa oeste de Ibiza.
-    latitud: float = 38.9469
-    longitud: float = 1.2264
-    lugar: str = "Cala Tarida (Ibiza)"
+    # Cala Corral, costa oeste de Ibiza (coordenadas de OpenStreetMap).
+    # Ojo: las que habia antes, 38.9469/1.2264, no eran Cala Tarida sino
+    # Cala Llentia, 800 m al norte. Da igual para los datos (todo el entorno
+    # cae en la misma celda del modelo) pero no para el mapa ni el rotulo.
+    latitud: float = 38.9447
+    longitud: float = 1.2318
+    lugar: str = "Cala Corral (Ibiza)"
     zona_horaria: str = "Europe/Madrid"
 
-    # La cala mira al oeste: el viento de este sector entra de lleno.
-    # Sector de "viento de mar" (onshore) en grados, de dónde VIENE el viento.
-    # Se baja de 202,5 a 190: el temporal del 19-21/08/2026 vino del SSO,
-    # justo en el borde, y la clasificacion 'entra en la cala' bailaba con
-    # decimas de grado. Con viento del sur la mar entra igual.
-    sector_mar_desde: float = 190.0  # S-SSO
-    sector_mar_hasta: float = 337.5  # NNO
+    # Sector de "viento de mar" (onshore) en grados, de donde VIENE el viento.
+    # No es a ojo: se calculo con la linea de costa de OpenStreetMap alrededor
+    # de la cala. Cala Corral se abre al rumbo 261 (Oeste), asi que el sector
+    # es 261 +- 75 grados. Con viento del sur la mar entra igual, por eso
+    # empieza en 186 y no en los 202,5 de antes.
+    sector_mar_desde: float = 186.0  # S
+    sector_mar_hasta: float = 336.0  # NNO
 
     # --- Vigilancia -------------------------------------------------------
     horas_vista: int = 12          # ventana de los AVISOS
@@ -181,12 +184,12 @@ class Config:
         cargar_dotenv()
         estado = os.environ.get("FICHERO_ESTADO")
         return cls(
-            latitud=_flotante("LATITUD", 38.9469),
-            longitud=_flotante("LONGITUD", 1.2264),
-            lugar=os.environ.get("LUGAR", "Cala Tarida (Ibiza)"),
+            latitud=_flotante("LATITUD", 38.9447),
+            longitud=_flotante("LONGITUD", 1.2318),
+            lugar=os.environ.get("LUGAR", "Cala Corral (Ibiza)"),
             zona_horaria=os.environ.get("ZONA_HORARIA", "Europe/Madrid"),
-            sector_mar_desde=_flotante("SECTOR_MAR_DESDE", 190.0),
-            sector_mar_hasta=_flotante("SECTOR_MAR_HASTA", 337.5),
+            sector_mar_desde=_flotante("SECTOR_MAR_DESDE", 186.0),
+            sector_mar_hasta=_flotante("SECTOR_MAR_HASTA", 336.0),
             horas_vista=_entero("HORAS_VISTA", 12),
             horas_pronostico=_entero("HORAS_PRONOSTICO", 72),
             nivel_minimo_aviso=_entero("NIVEL_MINIMO_AVISO", 2),

@@ -1,4 +1,4 @@
-# 🌊 Vigía Jetski — Cala Tarida
+# 🌊 Vigía Jetski — Cala Corral (Ibiza)
 
 Aviso automático de oleaje y viento para una moto de agua fondeada a la
 intemperie. Consulta **varias fuentes meteorológicas a la vez**, las cruza para
@@ -6,7 +6,7 @@ que ningún modelo se equivoque solo, y te manda un **WhatsApp con antelación**
 cuando la mar va a ponerse fea, para que te dé tiempo a bajar a por ella.
 
 ```
-🟠 *VIGÍA JETSKI · Cala Tarida (Ibiza)*
+🟠 *VIGÍA JETSKI · Cala Corral (Ibiza)*
 _11/08/2026 12:30 · nivel NARANJA_
 
 *Ahora mismo*
@@ -58,7 +58,7 @@ misma hora y en el mismo punto, los cinco modelos de oleaje daban
 creerte cualquiera de esos números.
 
 Los modelos cuya serie entera es 0 se descartan: significa que su malla coloca
-Cala Tarida en tierra, no que la mar esté plana. Es justo lo que le pasa a
+la cala en tierra, no que la mar esté plana. Es justo lo que le pasa a
 NCEP GFS-Wave aquí.
 
 *Se han descartado a propósito dos fuentes:* **SOCIB** (el observatorio balear)
@@ -79,18 +79,19 @@ La combinación no es una media ingenua:
 
 ## Qué tiene en cuenta además de la altura de la ola
 
-Esto es lo que lo hace útil de verdad para Cala Tarida en concreto:
+Esto es lo que lo hace útil de verdad para esta cala en concreto:
 
-**Viento de mar.** La cala mira al oeste. Con viento del sector **S–NO**
-(190°–337,5°) el oleaje entra de lleno y además empuja la moto contra la
+**Viento de mar.** Cala Corral se abre al **oeste** (rumbo 261°, calculado
+con la línea de costa de OpenStreetMap). Con viento del sector **S–NNO**
+(186°–336°) el oleaje entra de lleno y además empuja la moto contra la
 costa: es la situación peligrosa, y **sube un nivel el aviso**. Con viento de
 levante la cala queda a resguardo y la misma ola es mucho menos preocupante,
 así que **baja un nivel**.
 
-> El sector empezaba en 202,5° (SSO), pero el temporal del 19-21/08/2026 vino
-> justo de ese rumbo y la clasificación bailaba con décimas de grado: el nivel
-> entraba y salía de rojo cada hora. Se bajó a **190°**, porque con viento del
-> sur la mar entra en la cala igual.
+> El sector no se puso a ojo: se calcula girando 90° la línea de costa de
+> OpenStreetMap alrededor de la cala (las vías `natural=coastline` van con la
+> tierra a la izquierda y el mar a la derecha), lo que da un rumbo de mar
+> abierto de 261°. El sector es ese rumbo ±75°.
 
 **Periodo corto.** Un mar de viento picado (menos de 4 s entre olas) castiga
 el amarre mucho más que un mar de fondo largo de la misma altura. También suma.
@@ -118,7 +119,7 @@ cuando los modelos de mar están planos.
 **Los avisos oficiales pesan, pero se contrastan.** Una turbonada no la ve
 ningún modelo de oleaje, así que un aviso de AEMET no se puede ignorar. Pero
 AEMET avisa **por zonas grandes**: su aviso para "aguas de Ibiza y Formentera"
-puede ser por un chubasco al otro lado de la isla mientras en Cala Tarida no
+puede ser por un chubasco al otro lado de la isla mientras en Cala Corral no
 se mueve una hoja. La primera versión daba la alarma igualmente, y el
 11/08/2026 eso llenó el grupo de avisos con la mar completamente plana.
 
