@@ -186,3 +186,49 @@ def viento_con_unidades(nudos: Optional[float]) -> str:
     if nudos is None:
         return "?"
     return f"{nudos:.0f} kn ({nudos * 1.852:.0f} km/h)"
+
+
+# --- Sol y UV --------------------------------------------------------------
+# Escala oficial de la OMS. Los minutos son orientativos y para piel clara
+# sin protección: es el dato que la gente entiende de verdad, mucho más que
+# "índice 8". Con crema y a la sombra cambia todo, claro.
+ESCALA_UV: tuple[tuple[float, str, str, str], ...] = (
+    (3.0, "🟢", "bajo", "Puedes estar al sol sin agobiarte."),
+    (6.0, "🟡", "moderado", "Con crema vas bien. Te quemarías en ~40 min sin nada."),
+    (8.0, "🟠", "alto", "Crema sí o sí. Te quemas en ~25 min sin protección."),
+    (11.0, "🔴", "muy alto", "Pica de verdad: ~15 min y ya te has quemado."),
+)
+UV_EXTREMO = ("🟣", "extremo", "Brutal. ~10 min al sol y quemadura segura.")
+
+
+def nivel_uv(indice: Optional[float]) -> tuple[str, str, str]:
+    """Índice UV -> (emoji, etiqueta, frase en cristiano)."""
+    if indice is None:
+        return ("", "?", "")
+    for limite, emoji, etiqueta, consejo in ESCALA_UV:
+        if indice < limite:
+            return (emoji, etiqueta, consejo)
+    return UV_EXTREMO
+
+
+def franja_de_sol(
+    serie: Sequence[Consenso], umbral: float = 6.0
+) -> Optional[tuple[datetime, datetime, Consenso]]:
+    """Cuándo pica el sol de verdad y cuál es el peor momento.
+
+    Devuelve (inicio, fin, hora_del_maximo) del primer tramo del día en el que
+    el UV pasa de `umbral` (6 = "alto" en la escala de la OMS).
+    """
+    fuertes = [p for p in serie if p.uv is not None and p.uv >= umbral]
+    if not fuertes:
+        return None
+
+    # Solo el primer bloque continuo: mañana ya se verá.
+    bloque = [fuertes[0]]
+    for anterior, actual in zip(fuertes, fuertes[1:]):
+        if (actual.instante - anterior.instante).total_seconds() > 3600 * 1.5:
+            break
+        bloque.append(actual)
+
+    pico = max(bloque, key=lambda p: p.uv or 0)
+    return (bloque[0].instante, bloque[-1].instante, pico)

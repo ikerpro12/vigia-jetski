@@ -17,6 +17,8 @@ from .evaluacion import (
 from .modelo import Consenso, Evaluacion, Nivel, RespuestaFuente
 from .nautica import (
     descripcion_agua,
+    franja_de_sol,
+    nivel_uv,
     estado_mar,
     fuerza_viento,
     luz_restante,
@@ -116,6 +118,37 @@ def _bloque_proximos_dias(serie_larga, cfg, ahora) -> list[str]:
     if not filas:
         return []
     return ["*Próximos días*"] + filas + [""]
+
+
+def _bloque_sol(serie: list[Consenso], ahora: datetime) -> list[str]:
+    """El apartado del sol. El índice UV a secas no le dice nada a nadie, así
+    que se traduce a etiqueta, a minutos hasta quemarte y a la franja en la
+    que conviene no estar tirado en la moto sin camiseta."""
+    actual = serie[0] if serie else None
+    if actual is None or actual.uv is None:
+        return []
+
+    emoji, etiqueta, consejo = nivel_uv(actual.uv)
+    lineas = [f"*{emoji} Sol · UV {actual.uv:.0f} ({etiqueta})*", consejo]
+
+    franja = franja_de_sol(serie)
+    if franja:
+        inicio, fin, pico = franja
+        if fin > ahora:
+            emoji_pico, etiqueta_pico, _ = nivel_uv(pico.uv)
+            if inicio <= ahora:
+                lineas.append(
+                    f"_Pica fuerte hasta las {fin:%H:%M}. Lo peor a las "
+                    f"{pico.instante:%H:%M} (UV {pico.uv:.0f}, {etiqueta_pico})._"
+                )
+            else:
+                lineas.append(
+                    f"_Empieza a picar a las {inicio:%H:%M} y hasta las "
+                    f"{fin:%H:%M}. Lo peor a las {pico.instante:%H:%M} "
+                    f"(UV {pico.uv:.0f}, {etiqueta_pico})._"
+                )
+    lineas.append("")
+    return lineas
 
 
 def componer(
@@ -220,6 +253,9 @@ def componer(
                 f"_Mejor rato {cuando}: {inicio:%H:%M}–{fin:%H:%M}_"
             )
         lineas.append("")
+
+        # El sol, en cristiano: a qué hora pica y cuánto tardas en quemarte.
+        lineas.extend(_bloque_sol(list(serie), ahora))
 
     # El aviso oficial va antes que nada: es lo que más peso tiene.
     if aviso_oficial:

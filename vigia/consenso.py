@@ -94,6 +94,11 @@ def construir_consenso(
             for l in lecturas
             if l.direccion_viento_grados is not None
         ]
+        dir_olas = [
+            l.direccion_ola_grados for l in lecturas
+            if l.direccion_ola_grados is not None
+        ]
+        uvs = [l.uv for l in lecturas if l.uv is not None]
         lluvias = [l.lluvia_mm for l in lecturas if l.lluvia_mm is not None]
         aguas = [
             l.temperatura_mar_c for l in lecturas if l.temperatura_mar_c is not None
@@ -114,11 +119,13 @@ def construir_consenso(
                 racha_nudos=_combinar(rachas),
                 racha_max_nudos=max(rachas) if rachas else None,
                 direccion_viento_grados=_promediar_angulos(direcciones),
+                direccion_ola_grados=_promediar_angulos(dir_olas),
                 # En lluvia se coge el máximo: para decidir si un aviso de
                 # AEMET tiene fundamento, interesa el peor caso.
                 lluvia_mm=max(lluvias) if lluvias else None,
                 prob_lluvia_pct=max(probabilidades) if probabilidades else None,
                 temperatura_mar_c=_combinar(aguas),
+                uv=max(uvs) if uvs else None,
                 fuentes_ola=len(alturas),
                 fuentes_viento=len(rachas) or len(vientos),
             )

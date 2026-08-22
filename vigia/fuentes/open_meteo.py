@@ -120,7 +120,7 @@ def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
     parametros = {
         "latitude": cfg.latitud,
         "longitude": cfg.longitud,
-        "hourly": "precipitation,precipitation_probability",
+        "hourly": "precipitation,precipitation_probability,uv_index",
         # De paso salen el amanecer y el atardecer, que hacen falta para no
         # proponerte salir a navegar de noche.
         "daily": "sunrise,sunset,uv_index_max",
@@ -141,12 +141,14 @@ def lluvia_open_meteo(cfg: Config) -> RespuestaFuente:
 
     lluvias = bloque.get("precipitation") or [None] * len(tiempos)
     probabilidades = bloque.get("precipitation_probability") or [None] * len(tiempos)
+    uvs = bloque.get("uv_index") or [None] * len(tiempos)
 
     lecturas = [
         Lectura(
             instante=hora_local(marca, cfg.zona_horaria),
             lluvia_mm=lluvias[i] if i < len(lluvias) else None,
             prob_lluvia_pct=probabilidades[i] if i < len(probabilidades) else None,
+            uv=uvs[i] if i < len(uvs) else None,
         )
         for i, marca in enumerate(tiempos)
     ]

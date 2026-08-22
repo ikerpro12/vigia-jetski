@@ -93,6 +93,21 @@ así que **baja un nivel**.
 > tierra a la izquierda y el mar a la derecha), lo que da un rumbo de mar
 > abierto de 261°. El sector es ese rumbo ±75°.
 
+**La dirección de la OLA, no solo la del viento.** Esto tapaba un agujero de
+verdad. Antes solo se miraba de dónde soplaba, así que un **mar de fondo de
+0,9 m entrando del oeste con viento flojo de levante** se quedaba en amarillo
+—y por tanto sin mensaje— porque el viento "de tierra" rebajaba el nivel. Es
+la situación clásica de temporal lejano: la mar entra de lleno mientras en la
+playa apenas hace aire.
+
+Ahora el nivel sube si **entra la ola o sopla de fuera**, y el resguardo por
+viento de tierra solo se aplica si la mar tampoco entra. La dirección de la
+ola ya se descargaba desde el principio; simplemente no llegaba al consenso.
+
+> Open-Meteo da la dirección de la ola con el mismo criterio que la del
+> viento (de dónde *viene*). Está comprobado comparando la ola de viento con
+> el viento real: 90-104° de viento contra 102-117° de ola de viento.
+
 **Periodo corto.** Un mar de viento picado (menos de 4 s entre olas) castiga
 el amarre mucho más que un mar de fondo largo de la misma altura. También suma.
 
@@ -151,6 +166,19 @@ gusto o si vas a acabar con la espalda hecha polvo. Y propone el **mejor rato
 del día**, buscando el tramo más tranquilo **con luz** (de nada sirve que la
 mar esté como un plato a las cuatro de la mañana). Se añaden también la
 **temperatura del agua** y **cuánta luz queda** hasta el atardecer.
+
+**El sol, en cristiano.** El índice UV a secas no le dice nada a nadie, así
+que se traduce a etiqueta, a **minutos hasta quemarte** y a la franja en la
+que conviene no estar tirado en la moto sin camiseta:
+
+```
+*🟡 Sol · UV 5 (moderado)*
+Con crema vas bien. Te quemarías en ~40 min sin nada.
+_Empieza a picar a las 13:00 y hasta las 16:00. Lo peor a las 14:00 (UV 7, alto)._
+```
+
+Los minutos son orientativos, para piel clara y sin protección: es el dato que
+se entiende, mucho más que "índice 8".
 
 *Se quitó a propósito el boletín completo de AEMET*: eran cinco líneas de
 sinóptica ("baja de 1014 al norte de Argelia…") que nadie lee en el móvil. De

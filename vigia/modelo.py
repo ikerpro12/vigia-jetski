@@ -53,6 +53,7 @@ class Lectura:
     lluvia_mm: Optional[float] = None
     prob_lluvia_pct: Optional[float] = None
     temperatura_mar_c: Optional[float] = None
+    uv: Optional[float] = None
 
     def tiene_datos(self) -> bool:
         return any(
@@ -104,9 +105,14 @@ class Consenso:
     racha_nudos: Optional[float] = None
     racha_max_nudos: Optional[float] = None
     direccion_viento_grados: Optional[float] = None
+    # De donde VIENE la ola. Se descargaba y se tiraba, y esa era justo la
+    # pieza que faltaba para no dejar pasar un mar de fondo con viento flojo
+    # de tierra.
+    direccion_ola_grados: Optional[float] = None
     lluvia_mm: Optional[float] = None
     prob_lluvia_pct: Optional[float] = None
     temperatura_mar_c: Optional[float] = None
+    uv: Optional[float] = None
     fuentes_ola: int = 0
     fuentes_viento: int = 0
 

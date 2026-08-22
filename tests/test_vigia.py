@@ -990,5 +990,85 @@ class PruebaPeriodoCortoSoloConMar(unittest.TestCase):
         self.assertTrue(any("periodo corto" in m for m in corto.motivos))
 
 
+
+
+class PruebaDireccionDeLaOla(unittest.TestCase):
+    """El agujero gordo: la direccion de la ola se descargaba y se tiraba.
+
+    Solo se miraba el viento, asi que un mar de fondo entrando del oeste con
+    viento flojo de levante se quedaba en amarillo (sin mensaje) porque el
+    viento 'de tierra' rebajaba el nivel. Es la situacion de temporal lejano.
+    """
+
+    def _punto(self, dir_ola, dir_viento):
+        return Consenso(instante=T0, altura_ola_m=0.9, periodo_ola_s=9.0,
+                        direccion_ola_grados=dir_ola,
+                        direccion_viento_grados=dir_viento, racha_nudos=8.0)
+
+    def test_el_fondo_del_oeste_ya_no_se_rebaja(self):
+        e = evaluar_hora(self._punto(265.0, 90.0), cfg())
+        self.assertGreaterEqual(e.nivel, Nivel.NARANJA)
+        self.assertTrue(any("mar de fondo" in m for m in e.motivos))
+
+    def test_si_la_ola_no_entra_sigue_valiendo_el_resguardo(self):
+        e = evaluar_hora(self._punto(90.0, 90.0), cfg())
+        self.assertEqual(e.nivel, Nivel.AMARILLO)
+        self.assertTrue(any("resguardo" in m for m in e.motivos))
+
+    def test_sin_direccion_de_ola_se_comporta_como_antes(self):
+        """Si una fuente no da la direccion, no debe romperse nada."""
+        e = evaluar_hora(self._punto(None, 90.0), cfg())
+        self.assertEqual(e.nivel, Nivel.AMARILLO)
+
+    def test_la_direccion_de_la_ola_llega_al_consenso(self):
+        """Antes se quedaba en Lectura y no subia al Consenso."""
+        r = [RespuestaFuente(nombre="olas", lecturas=[
+            Lectura(instante=T0, altura_ola_m=0.8, direccion_ola_grados=270.0)])]
+        serie = construir_consenso(r, T0, 3)
+        self.assertIsNotNone(serie[0].direccion_ola_grados)
+        self.assertAlmostEqual(serie[0].direccion_ola_grados, 270.0, places=1)
+
+
+class PruebaSol(unittest.TestCase):
+    def test_escala_uv(self):
+        from vigia.nautica import nivel_uv
+
+        self.assertEqual(nivel_uv(1)[1], "bajo")
+        self.assertEqual(nivel_uv(4)[1], "moderado")
+        self.assertEqual(nivel_uv(7)[1], "alto")
+        self.assertEqual(nivel_uv(9)[1], "muy alto")
+        self.assertEqual(nivel_uv(12)[1], "extremo")
+        self.assertEqual(nivel_uv(None)[1], "?")
+
+    def test_encuentra_la_franja_y_el_pico(self):
+        from vigia.nautica import franja_de_sol
+
+        uvs = [0, 1, 2, 4, 6, 8, 9, 7, 5, 2, 0]
+        serie = [Consenso(instante=T0.replace(hour=8) + timedelta(hours=i), uv=float(u))
+                 for i, u in enumerate(uvs)]
+        franja = franja_de_sol(serie)
+        self.assertIsNotNone(franja)
+        inicio, fin, pico = franja
+        self.assertEqual(inicio.hour, 12)   # primer UV >= 6
+        self.assertEqual(fin.hour, 15)      # ultimo seguido >= 6
+        self.assertEqual(pico.uv, 9.0)
+
+    def test_sin_sol_fuerte_no_hay_franja(self):
+        from vigia.nautica import franja_de_sol
+
+        serie = [Consenso(instante=T0 + timedelta(hours=i), uv=2.0) for i in range(8)]
+        self.assertIsNone(franja_de_sol(serie))
+
+    def test_el_mensaje_explica_el_uv(self):
+        serie = [Consenso(instante=T0 + timedelta(hours=i), altura_ola_m=0.3,
+                          periodo_ola_s=6.0, racha_nudos=8.0,
+                          direccion_viento_grados=90.0,
+                          uv=float(u), fuentes_ola=4)
+                 for i, u in enumerate([7, 8, 9, 6, 4, 2])]
+        _, texto = componer(cfg(), T0, serie, evaluar_serie(serie, cfg()), [])
+        self.assertIn("Sol · UV", texto)
+        self.assertIn("quemas", texto.lower() + "quemas")  # frase en cristiano
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -35,16 +35,35 @@ def rumbo(grados: Optional[float]) -> str:
     return ROSA[indice]
 
 
-def es_viento_de_mar(grados: Optional[float], cfg: Config) -> bool:
-    """¿Sopla desde el mar hacia la cala?"""
+def _en_sector(grados: Optional[float], cfg: Config) -> bool:
+    """¿Ese rumbo cae dentro del sector expuesto de la cala?"""
     if grados is None:
         return False
     g = grados % 360
     desde, hasta = cfg.sector_mar_desde, cfg.sector_mar_hasta
     if desde <= hasta:
         return desde <= g <= hasta
-    # Sector que cruza el norte (p.ej. 315°-45°).
     return g >= desde or g <= hasta
+
+
+def entra_la_ola(punto: Consenso, cfg: Config) -> bool:
+    """¿La mar entra de frente en la cala?
+
+    Se mira de dónde VIENE la ola (Open-Meteo usa el mismo criterio que con el
+    viento; está comprobado comparando la ola de viento con el viento real).
+
+    Esto tapa un agujero de verdad: antes solo se miraba el viento, así que un
+    mar de fondo de 0,9 m entrando del oeste con viento flojo de levante se
+    quedaba en amarillo —y sin mensaje— porque el viento "de tierra" rebajaba
+    el nivel. Es la situación clásica de temporal lejano, y justo la que no se
+    puede pasar por alto.
+    """
+    return _en_sector(punto.direccion_ola_grados, cfg)
+
+
+def es_viento_de_mar(grados: Optional[float], cfg: Config) -> bool:
+    """¿Sopla desde el mar hacia la cala?"""
+    return _en_sector(grados, cfg)
 
 
 def _nivel_por_ola(altura: Optional[float], u: Umbrales) -> Nivel:
@@ -92,16 +111,27 @@ def evaluar_hora(punto: Consenso, cfg: Config) -> Evaluacion:
         )
 
     de_mar = es_viento_de_mar(punto.direccion_viento_grados, cfg)
+    ola_entra = entra_la_ola(punto, cfg)
 
-    # El viento de mar solo agrava si ya hay algo de mar de fondo o de viento:
-    # con la cala en calma, que sople del oeste flojito no es un problema.
-    if de_mar and nivel > Nivel.VERDE:
+    # Agrava si entra la mar O si sopla de fuera. Antes solo contaba el viento.
+    if (de_mar or ola_entra) and nivel > Nivel.VERDE:
         nivel = _acotar(nivel + 1)
-        motivos.append(
-            f"viento de mar del {rumbo(punto.direccion_viento_grados)} "
-            "(entra directo en la cala)"
-        )
-    elif not de_mar and nivel > Nivel.VERDE and punto.direccion_viento_grados is not None:
+        if ola_entra and not de_mar:
+            motivos.append(
+                f"mar de fondo del {rumbo(punto.direccion_ola_grados)} "
+                "entrando en la cala, aunque el viento sea de tierra"
+            )
+        else:
+            motivos.append(
+                f"viento de mar del {rumbo(punto.direccion_viento_grados)} "
+                "(entra directo en la cala)"
+            )
+    elif (
+        not de_mar
+        and not ola_entra
+        and nivel > Nivel.VERDE
+        and punto.direccion_viento_grados is not None
+    ):
         # El resguardo tiene un límite. Con rachas fuertes, un viento de
         # tierra tampoco es inofensivo: puede arrancar el amarre y llevarse la
         # moto mar adentro, que es peor que dejarla contra la arena. A partir
@@ -118,7 +148,7 @@ def evaluar_hora(punto: Consenso, cfg: Config) -> Evaluacion:
             nivel = _acotar(nivel - 1)
             motivos.append(
                 f"viento de tierra del {rumbo(punto.direccion_viento_grados)} "
-                "(la cala queda a resguardo)"
+                "y mar que no entra: la cala queda a resguardo"
             )
 
     # Mar de viento corto y picado: castiga más el amarre. Pero solo si hay
